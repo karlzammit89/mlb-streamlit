@@ -62,11 +62,9 @@ if mode == "Schedule":
 
         if games:
             for game in games:
-                # extract time only (HH:MM)
                 time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
 
-                # ✅ UPDATED ORDER: Game ID → Matchup → Time
-                st.write(f" {game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only} (ET)")
+                st.write(f"🎮 {game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only} (ET)")
         else:
             st.warning("No games found")
 
@@ -97,6 +95,10 @@ if mode == "Game Feed":
             end_time = convert_to_et(play.get("about", {}).get("endTime"))
 
             inning = play.get("about", {}).get("inning")
+            half_inning = play.get("about", {}).get("halfInning", "")
+
+            # 🆕 TOP / BOTTOM INNING FORMAT
+            inning_display = f"{inning} ({half_inning})" if inning else "N/A"
 
             play_info = {
                 "atBatIndex": play.get("atBatIndex"),
@@ -107,7 +109,7 @@ if mode == "Game Feed":
                 "score": f"{away_score} - {home_score}",
                 "startTime": start_time,
                 "endTime": end_time,
-                "inning": inning,
+                "inning": inning_display,
                 "pitches": []
             }
 
