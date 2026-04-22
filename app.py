@@ -66,7 +66,7 @@ if mode == "Schedule":
                 time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
 
                 # ✅ UPDATED ORDER: Game ID → Matchup → Time
-                st.write(f"🎮 {game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only} (ET)")
+                st.write(f" {game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only} (ET)")
         else:
             st.warning("No games found")
 
