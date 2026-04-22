@@ -2,8 +2,21 @@ import streamlit as st
 import requests
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import time
 
 st.title("⚾ MLB Dashboard")
+
+# =========================
+# REAL TIME CLOCK (ET)
+# =========================
+def get_now_et():
+    return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S %Z")
+
+st.sidebar.markdown("### 🕒 Current Eastern Time")
+st.sidebar.write(get_now_et())
+
+st.sidebar.markdown("---")
+st.sidebar.write("Auto-refresh updates timestamp")
 
 # =========================
 # MODE SELECTOR
@@ -15,8 +28,11 @@ mode = st.radio("Select Mode", ["Schedule", "Game Feed"])
 # =========================
 def convert_to_et(raw_time):
     if raw_time:
-        dt = datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
-        return dt.astimezone(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S %Z")
+        try:
+            dt = datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
+            return dt.astimezone(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S %Z")
+        except:
+            return None
     return None
 
 
@@ -33,14 +49,18 @@ if mode == "Schedule":
         data = requests.get(url).json()
 
         games = [
-            f'{g["gamePk"]}: {g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}'
+            {
+                "gamePk": g["gamePk"],
+                "matchup": f'{g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}',
+                "time": convert_to_et(g.get("gameDate"))
+            }
             for d in data.get("dates", [])
             for g in d.get("games", [])
         ]
 
         if games:
             for game in games:
-                st.write(game)
+                st.write(f"🕒 {game['time']} | {game['gamePk']} | {game['matchup']}")
         else:
             st.warning("No games found")
 
@@ -67,6 +87,10 @@ if mode == "Game Feed":
             away_score = play.get("result", {}).get("awayScore")
             home_score = play.get("result", {}).get("homeScore")
 
+            # 🕒 PLAY TIMESTAMPS (ET)
+            start_time = convert_to_et(play.get("about", {}).get("startTime"))
+            end_time = convert_to_et(play.get("about", {}).get("endTime"))
+
             play_info = {
                 "atBatIndex": play.get("atBatIndex"),
                 "batter": play.get("matchup", {}).get("batter", {}).get("fullName"),
@@ -74,6 +98,8 @@ if mode == "Game Feed":
                 "result": result_event,
                 "desc": result_desc,
                 "score": f"{away_score} - {home_score}",
+                "startTime": start_time,
+                "endTime": end_time,
                 "pitches": []
             }
 
@@ -88,9 +114,18 @@ if mode == "Game Feed":
         # OUTPUT
         for ab in at_bats:
             st.subheader(f"At-bat {ab['atBatIndex']}")
+
+            st.write(f"🕒 Start (ET): {ab['startTime']}")
+            st.write(f"🕒 End (ET): {ab['endTime']}")
+
             st.write(f"{ab['batter']} vs {ab['pitcher']}")
             st.write(f"Score: {ab['score']}")
             st.write(f"Result: {ab['result']} - {ab['desc']}")
 
             for p in ab["pitches"]:
                 st.write("• " + str(p))
+
+# =========================
+# AUTO REFRESH OPTION
+# =========================
+st.caption("Tip: refresh page to update live timestamps")
