@@ -64,7 +64,7 @@ if mode == "Schedule":
             for game in games:
                 time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
 
-                st.write(f" {game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only} (ET)")
+                st.write(f"🎮 {game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only} (ET)")
         else:
             st.warning("No games found")
 
@@ -74,7 +74,7 @@ if mode == "Schedule":
 # =========================
 if mode == "Game Feed":
 
-    game_pk = st.text_input("Enter Game ID", "823878")
+    game_pk = st.text_input("Enter Game PK", "823878")
 
     if st.button("Load Game Feed"):
 
@@ -97,7 +97,6 @@ if mode == "Game Feed":
             inning = play.get("about", {}).get("inning")
             half_inning = play.get("about", {}).get("halfInning", "")
 
-            # 🆕 TOP / BOTTOM INNING FORMAT
             inning_display = f"{inning} ({half_inning})" if inning else "N/A"
 
             play_info = {
@@ -127,9 +126,10 @@ if mode == "Game Feed":
         for ab in at_bats:
             st.subheader(f"⚾ At-bat {ab['atBatIndex']}")
 
-            st.write(f"🏟️ Inning: {ab['inning']}")
-            st.write(f"📊 Score: {ab['score']}")
+            # 🏟️ Inning + Score (COMBINED)
+            st.write(f"🏟️ {ab['inning']} | 📊 {ab['score']}")
 
+            # 👤 Batter vs Pitcher (COMBINED)
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
 
             st.write(f"🕒 Start (ET): {ab['startTime']}")
