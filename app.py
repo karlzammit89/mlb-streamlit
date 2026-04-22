@@ -61,8 +61,10 @@ if mode == "Schedule":
         ]
 
         if games:
-            for game in games:
-                st.write(f"🕒 {game['time']} | {game['gamePk']} | ⚾ {game['matchup']}")
+    for game in games:
+        time_only = game["time"].split(" ")[1] if game["time"] else "N/A"
+        st.write(f"🎮 {game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only}")
+        
         else:
             st.warning("No games found")
 
