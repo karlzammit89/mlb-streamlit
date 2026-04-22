@@ -75,19 +75,19 @@ if mode == "Game Feed":
     game_pk = st.text_input("Enter Game PK", "823878")
 
     # =========================
-    # INNING FILTER
+    # INNING FILTER (UPDATED)
     # =========================
-    st.markdown("### 🎯 Inning Filter")
-
     USE_INNING_FILTER = st.checkbox("Enable Inning Filter", value=False)
 
-    INNING_RANGE = st.slider(
-        "Select Inning Range",
-        min_value=1,
-        max_value=20,
-        value=(1, 9)
+    INNING_SELECTION = st.multiselect(
+        "Select Innings (1–20)",
+        options=list(range(1, 21)),
+        default=[1, 2, 3]
     ) if USE_INNING_FILTER else None
 
+    # =========================
+    # LOAD GAME FEED
+    # =========================
     if st.button("Load Game Feed"):
 
         url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
@@ -111,12 +111,10 @@ if mode == "Game Feed":
             inning = play.get("about", {}).get("inning")
 
             # =========================
-            # APPLY INNING FILTER
+            # INNING FILTER LOGIC
             # =========================
             if USE_INNING_FILTER:
-                if inning is None:
-                    continue
-                if inning < INNING_RANGE[0] or inning > INNING_RANGE[1]:
+                if inning is None or inning not in INNING_SELECTION:
                     continue
 
             play_info = {
@@ -133,7 +131,7 @@ if mode == "Game Feed":
             }
 
             # =========================
-            # PITCH EXTRACTION
+            # PITCHES
             # =========================
             for event in play.get("playEvents", []):
                 if event.get("isPitch"):
