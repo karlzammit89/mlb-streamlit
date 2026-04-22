@@ -115,11 +115,10 @@ if mode == "Game Feed":
         for ab in at_bats:
             st.subheader(f"At-bat {ab['atBatIndex']}")
 
-            st.write(f"🕒 Start (ET): {ab['startTime']}")
-            st.write(f"🕒 End (ET): {ab['endTime']}")
-
             st.write(f"{ab['batter']} vs {ab['pitcher']}")
             st.write(f"Score: {ab['score']}")
+            st.write(f"🕒 Start (ET): {ab['startTime']}")
+            st.write(f"🕒 End (ET): {ab['endTime']}")
             st.write(f"Result: {ab['result']} - {ab['desc']}")
 
             for p in ab["pitches"]:
