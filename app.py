@@ -129,7 +129,9 @@ if mode == "Game Feed":
 
             st.write(f"🏟️ Inning: {ab['inning']}")
             st.write(f"📊 Score: {ab['score']}")
-            st.write(f"👤 Batter: {ab['batter']}") st.write(f"🧢 Pitcher: {ab['pitcher']}")
+
+            st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
+
             st.write(f"🕒 Start (ET): {ab['startTime']}")
             st.write(f"🕒 End (ET): {ab['endTime']}")
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
