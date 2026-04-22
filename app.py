@@ -2,8 +2,10 @@ import streamlit as st
 import requests
 from datetime import datetime
 from zoneinfo import ZoneInfo
-import time
 
+# =========================
+# TITLE
+# =========================
 st.title("⚾ MLB Dashboard")
 
 # =========================
@@ -60,7 +62,7 @@ if mode == "Schedule":
 
         if games:
             for game in games:
-                st.write(f"🕒 {game['time']} | {game['gamePk']} | {game['matchup']}")
+                st.write(f"🕒 {game['time']} | 🎮 {game['gamePk']} | ⚾ {game['matchup']}")
         else:
             st.warning("No games found")
 
@@ -71,6 +73,20 @@ if mode == "Schedule":
 if mode == "Game Feed":
 
     game_pk = st.text_input("Enter Game PK", "823878")
+
+    # =========================
+    # INNING FILTER
+    # =========================
+    st.markdown("### 🎯 Inning Filter")
+
+    USE_INNING_FILTER = st.checkbox("Enable Inning Filter", value=False)
+
+    INNING_RANGE = st.slider(
+        "Select Inning Range",
+        min_value=1,
+        max_value=20,
+        value=(1, 9)
+    ) if USE_INNING_FILTER else None
 
     if st.button("Load Game Feed"):
 
@@ -87,9 +103,21 @@ if mode == "Game Feed":
             away_score = play.get("result", {}).get("awayScore")
             home_score = play.get("result", {}).get("homeScore")
 
-            # 🕒 PLAY TIMESTAMPS (ET)
+            # 🕒 TIMES
             start_time = convert_to_et(play.get("about", {}).get("startTime"))
             end_time = convert_to_et(play.get("about", {}).get("endTime"))
+
+            # 🏟️ INNING
+            inning = play.get("about", {}).get("inning")
+
+            # =========================
+            # APPLY INNING FILTER
+            # =========================
+            if USE_INNING_FILTER:
+                if inning is None:
+                    continue
+                if inning < INNING_RANGE[0] or inning > INNING_RANGE[1]:
+                    continue
 
             play_info = {
                 "atBatIndex": play.get("atBatIndex"),
@@ -100,9 +128,13 @@ if mode == "Game Feed":
                 "score": f"{away_score} - {home_score}",
                 "startTime": start_time,
                 "endTime": end_time,
+                "inning": inning,
                 "pitches": []
             }
 
+            # =========================
+            # PITCH EXTRACTION
+            # =========================
             for event in play.get("playEvents", []):
                 if event.get("isPitch"):
                     play_info["pitches"].append(
@@ -111,28 +143,31 @@ if mode == "Game Feed":
 
             at_bats.append(play_info)
 
+        # =========================
         # OUTPUT
-for ab in at_bats:
-    st.subheader(f"⚾ At-bat {ab['atBatIndex']}")
+        # =========================
+        for ab in at_bats:
+            st.subheader(f"⚾ At-bat {ab['atBatIndex']}")
 
-    st.write(f"👤 Batter: {ab['batter']}")
-    st.write(f"🧢 Pitcher: {ab['pitcher']}")
-    st.write(f"📊 Score: {ab['score']}")
-    st.write(f"🕒 Start (ET): {ab['startTime']}")
-    st.write(f"🕒 End (ET): {ab['endTime']}")
+            st.write(f"👤 Batter: {ab['batter']}")
+            st.write(f"🧢 Pitcher: {ab['pitcher']}")
+            st.write(f"🏟️ Inning: {ab['inning']}")
+            st.write(f"📊 Score: {ab['score']}")
+            st.write(f"🕒 Start (ET): {ab['startTime']}")
+            st.write(f"🕒 End (ET): {ab['endTime']}")
 
-    # Result line with emoji context
-    st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
+            st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
 
-    st.markdown("### 🧩 Pitches")
+            st.markdown("### 🧩 Pitches")
 
-    for i, p in enumerate(ab["pitches"], start=1):
-        if p:
-            st.write(f"⚾ Pitch {i}: {p}")
-        else:
-            st.write(f"⚾ Pitch {i}: (no description)")
+            for i, p in enumerate(ab["pitches"], start=1):
+                if p:
+                    st.write(f"⚾ Pitch {i}: {p}")
+                else:
+                    st.write(f"⚾ Pitch {i}: (no description)")
+
 
 # =========================
-# AUTO REFRESH OPTION
+# FOOTER
 # =========================
-st.caption("Tip: refresh page to update live timestamps")
+st.caption("Tip: refresh page to update live timestamps ⚾")
