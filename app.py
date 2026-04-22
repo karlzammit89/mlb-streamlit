@@ -126,15 +126,11 @@ if mode == "Game Feed":
         for ab in at_bats:
             st.subheader(f"⚾ At-bat {ab['atBatIndex']}")
 
-            # 🏟️ Inning + Score (COMBINED)
             st.write(f"🏟️ {ab['inning']} | 📊 {ab['score']}")
-
-            # 👤 Batter vs Pitcher (COMBINED)
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
-
+            st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
             st.write(f"🕒 Start (ET): {ab['startTime']}")
             st.write(f"🕒 End (ET): {ab['endTime']}")
-            st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
 
             st.markdown("### 🧩 Pitches")
 
@@ -143,6 +139,9 @@ if mode == "Game Feed":
                     st.write(f"⚾ Pitch {i}: {p}")
                 else:
                     st.write(f"⚾ Pitch {i}: (no description)")
+
+            # 👇 SEPARATOR LINE BETWEEN AT-BATS
+            st.divider()
 
 
 # =========================
