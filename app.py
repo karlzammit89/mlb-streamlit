@@ -61,10 +61,12 @@ if mode == "Schedule":
         ]
 
         if games:
-    for game in games:
-        time_only = game["time"].split(" ")[1] if game["time"] else "N/A"
-        st.write(f"🎮 {game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only}")
-        
+            for game in games:
+                # extract time only (HH:MM)
+                time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
+
+                # ✅ UPDATED ORDER: Game ID → Matchup → Time
+                st.write(f"🎮 {game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only}")
         else:
             st.warning("No games found")
 
@@ -76,20 +78,6 @@ if mode == "Game Feed":
 
     game_pk = st.text_input("Enter Game PK", "823878")
 
-    # =========================
-    # INNING FILTER (UPDATED)
-    # =========================
-    USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
-
-    INNING_SELECTION = st.multiselect(
-        "Select Innings (1–20)",
-        options=list(range(1, 21)),
-        default=[1, 2, 3]
-    ) if USE_INNING_FILTER else None
-
-    # =========================
-    # LOAD GAME FEED
-    # =========================
     if st.button("Load Game Feed"):
 
         url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
@@ -105,19 +93,10 @@ if mode == "Game Feed":
             away_score = play.get("result", {}).get("awayScore")
             home_score = play.get("result", {}).get("homeScore")
 
-            # 🕒 TIMES
             start_time = convert_to_et(play.get("about", {}).get("startTime"))
             end_time = convert_to_et(play.get("about", {}).get("endTime"))
 
-            # 🏟️ INNING
             inning = play.get("about", {}).get("inning")
-
-            # =========================
-            # INNING FILTER LOGIC
-            # =========================
-            if USE_INNING_FILTER:
-                if inning is None or inning not in INNING_SELECTION:
-                    continue
 
             play_info = {
                 "atBatIndex": play.get("atBatIndex"),
@@ -132,9 +111,6 @@ if mode == "Game Feed":
                 "pitches": []
             }
 
-            # =========================
-            # PITCHES
-            # =========================
             for event in play.get("playEvents", []):
                 if event.get("isPitch"):
                     play_info["pitches"].append(
@@ -155,7 +131,6 @@ if mode == "Game Feed":
             st.write(f"📊 Score: {ab['score']}")
             st.write(f"🕒 Start (ET): {ab['startTime']}")
             st.write(f"🕒 End (ET): {ab['endTime']}")
-
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
 
             st.markdown("### 🧩 Pitches")
