@@ -77,7 +77,7 @@ if mode == "Game Feed":
     # =========================
     # INNING FILTER (UPDATED)
     # =========================
-    USE_INNING_FILTER = st.checkbox("Enable Inning Filter", value=False)
+    USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
 
     INNING_SELECTION = st.multiselect(
         "Select Innings (1–20)",
