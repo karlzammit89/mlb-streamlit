@@ -112,17 +112,25 @@ if mode == "Game Feed":
             at_bats.append(play_info)
 
         # OUTPUT
-        for ab in at_bats:
-            st.subheader(f"At-bat {ab['atBatIndex']}")
+for ab in at_bats:
+    st.subheader(f"⚾ At-bat {ab['atBatIndex']}")
 
-            st.write(f"{ab['batter']} vs {ab['pitcher']}")
-            st.write(f"Score: {ab['score']}")
-            st.write(f"🕒 Start (ET): {ab['startTime']}")
-            st.write(f"🕒 End (ET): {ab['endTime']}")
-            st.write(f"Result: {ab['result']} - {ab['desc']}")
+    st.write(f"👤 Batter: {ab['batter']}")
+    st.write(f"🧢 Pitcher: {ab['pitcher']}")
+    st.write(f"📊 Score: {ab['score']}")
+    st.write(f"🕒 Start (ET): {ab['startTime']}")
+    st.write(f"🕒 End (ET): {ab['endTime']}")
 
-            for p in ab["pitches"]:
-                st.write("• " + str(p))
+    # Result line with emoji context
+    st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
+
+    st.markdown("### 🧩 Pitches")
+
+    for i, p in enumerate(ab["pitches"], start=1):
+        if p:
+            st.write(f"⚾ Pitch {i}: {p}")
+        else:
+            st.write(f"⚾ Pitch {i}: (no description)")
 
 # =========================
 # AUTO REFRESH OPTION
