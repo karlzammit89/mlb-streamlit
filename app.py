@@ -14,7 +14,7 @@ st.title("⚾ MLB Dashboard")
 def get_now_et():
     return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S %Z")
 
-st.sidebar.markdown("### 🕒 Latest Update")
+st.sidebar.markdown("### 🕒 Latest update at")
 st.sidebar.write(get_now_et())
 st.sidebar.markdown("---")
 
