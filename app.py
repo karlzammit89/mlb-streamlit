@@ -97,9 +97,20 @@ if mode == "Game Feed":
 
     game_pk = st.text_input("Enter Game ID", "823878")
 
-    inning_options = ["All"] + [str(i) for i in range(1, 10)] + ["Extra Innings"]
-    selected_inning = st.selectbox("Select Inning", inning_options)
+    # =========================
+    # INNING FILTER (TOGGLE STYLE)
+    # =========================
+    USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
 
+    selected_inning = "All"
+
+    if USE_INNING_FILTER:
+        inning_options = ["All"] + [str(i) for i in range(1, 10)] + ["Extra Innings"]
+        selected_inning = st.selectbox("Select Inning", inning_options)
+
+    # =========================
+    # TIME FILTER (EXISTING)
+    # =========================
     USE_TIME_FILTER = st.checkbox("Filter by Actual Time (ET)", value=False)
 
     et_now = datetime.now(ZoneInfo("America/New_York"))
@@ -119,6 +130,9 @@ if mode == "Game Feed":
         START_TIME = st.text_input("Start Time (YYYY-MM-DD HH:MM)", st.session_state.start_time)
         END_TIME = st.text_input("End Time (YYYY-MM-DD HH:MM)", st.session_state.end_time)
 
+    # =========================
+    # LOAD GAME
+    # =========================
     if st.button("Load Game Feed"):
 
         url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
@@ -133,11 +147,15 @@ if mode == "Game Feed":
             START_DT = datetime.fromisoformat(START_TIME).replace(tzinfo=ZoneInfo("America/New_York"))
             END_DT = datetime.fromisoformat(END_TIME).replace(tzinfo=ZoneInfo("America/New_York"))
 
+        # =========================
+        # BUILD PLAY DATA
+        # =========================
         for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
 
             start_time = convert_to_et(play.get("about", {}).get("startTime"))
             end_time = convert_to_et(play.get("about", {}).get("endTime"))
 
+            # TIME FILTER
             if USE_TIME_FILTER and start_time and START_DT and END_DT:
                 if not (START_DT <= start_time <= END_DT):
                     continue
@@ -176,8 +194,14 @@ if mode == "Game Feed":
                 "pitches": pitches
             })
 
+        # =========================
+        # INNING FILTER LOGIC
+        # =========================
         def inning_filter(ab):
             inning = ab.get("inning_raw")
+
+            if not USE_INNING_FILTER:
+                return True
 
             if selected_inning == "All":
                 return True
@@ -188,6 +212,9 @@ if mode == "Game Feed":
 
         filtered_at_bats = list(filter(inning_filter, at_bats))
 
+        # =========================
+        # OUTPUT
+        # =========================
         prev_score = None
 
         for ab in filtered_at_bats:
