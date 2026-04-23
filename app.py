@@ -41,20 +41,10 @@ def convert_to_et(raw_time):
 def get_result_emoji(result_event: str, desc: str = ""):
     text = f"{result_event or ''} {desc or ''}".lower()
 
-    if (
-        "home run" in text
-        or "homer" in text
-        or "home_run" in text
-        or "homerun" in text
-        or "hits a home run" in text
-    ):
+    if "home run" in text or "homer" in text or "home_run" in text or "homerun" in text:
         return "💥"
 
-    if (
-        "strikeout" in text
-        or "struck out" in text
-        or "strike out" in text
-    ):
+    if "strikeout" in text or "struck out" in text:
         return "❌"
 
     if "walk" in text:
@@ -67,14 +57,7 @@ def get_result_emoji(result_event: str, desc: str = ""):
     if "triple" in text:
         return "🟢"
 
-    if (
-        "double play" in text
-        or "grounded into dp" in text
-        or "grounded into double play" in text
-        or "force out double play" in text
-        or "lineout double play" in text
-        or "dp:" in text
-    ):
+    if "double play" in text or "grounded into dp" in text or "dp:" in text:
         return "❌"
 
     if "error" in text:
@@ -143,13 +126,18 @@ if mode == "Game Feed":
 
             start_time = convert_to_et(play.get("about", {}).get("startTime"))
 
-            # ✅ BALL IN PLAY / END OF AT-BAT TIME
-            end_time = convert_to_et(play.get("about", {}).get("endTime"))
-
             inning = play.get("about", {}).get("inning")
             half_inning = play.get("about", {}).get("halfInning", "")
-
             inning_display = f"{inning} ({half_inning})" if inning else "N/A"
+
+            # =========================
+            # 🔥 KEY FIX: LAST PITCH START TIME
+            # =========================
+            last_pitch_start_time = None
+
+            for event in play.get("playEvents", []):
+                if event.get("isPitch"):
+                    last_pitch_start_time = convert_to_et(event.get("startTime"))
 
             play_info = {
                 "atBatIndex": play.get("atBatIndex"),
@@ -159,7 +147,7 @@ if mode == "Game Feed":
                 "desc": result_desc,
                 "score": f"{away_score} - {home_score}",
                 "startTime": start_time,
-                "endTime": end_time,
+                "lastPitchTime": last_pitch_start_time,
                 "inning": inning_display,
                 "pitches": []
             }
@@ -194,14 +182,13 @@ if mode == "Game Feed":
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
 
-            # =========================
-            # TIMING OUTPUT (UPDATED)
-            # =========================
             st.write(f"🕒 Start (ET): {ab['startTime']}")
-            st.write(f"🕒 End of At-Bat (ET): {ab['endTime']}")
 
-            # ✅ YOUR REQUESTED LINE
-            st.success(f"⚾ Ball in play ended at: {ab['endTime']}")
+            # =========================
+            # ✅ FINAL FIX OUTPUT
+            # =========================
+            st.write(f"⚾ Last Pitch Thrown (ET): {ab['lastPitchTime']}")
+            st.success(f"⚾ Ball last in play at: {ab['lastPitchTime']}")
 
             st.markdown("### 🧩 Pitches")
 
