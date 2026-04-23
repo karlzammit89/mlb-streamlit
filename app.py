@@ -14,7 +14,7 @@ st.title("⚾ MLB Dashboard")
 def get_now_et():
     return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S %Z")
 
-st.sidebar.markdown("### 🕒 Last Game Feed Fetched")
+st.sidebar.markdown("### 🕒 Data Last Fetched")
 st.sidebar.write(get_now_et())
 st.sidebar.markdown("---")
 
@@ -103,7 +103,7 @@ if mode == "Game Feed":
     # =========================
     # INNING FILTER
     # =========================
-    st.markdown("#### 🧾 Inning Filter")
+    st.markdown("#### 📂 Inning Filter")
 
     inning_options = ["All"] + [str(i) for i in range(1, 10)] + ["Extra Innings"]
     selected_inning = st.selectbox("Select Inning", inning_options)
