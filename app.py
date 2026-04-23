@@ -205,7 +205,7 @@ if mode == "Game Feed":
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
 
             st.write(f"🕒 At Bat Start Time: {ab['startTime']}")
-            st.success(f"⚾ Last Pitch Thrown: {ab['lastPitchTime']}")
+            st.success(f"🕒 Last Pitch Thrown: {ab['lastPitchTime']}")
             st.write(f"🕒 At Bat End Time: {ab['endTime']}")
 
             st.markdown("### 🧩 Pitches")
