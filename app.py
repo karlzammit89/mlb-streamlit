@@ -41,9 +41,6 @@ def convert_to_et(raw_time):
 def get_result_emoji(result_event: str, desc: str = ""):
     text = f"{result_event or ''} {desc or ''}".lower()
 
-    # =========================
-    # HOME RUN (all variants)
-    # =========================
     if (
         "home run" in text
         or "homer" in text
@@ -53,9 +50,6 @@ def get_result_emoji(result_event: str, desc: str = ""):
     ):
         return "💥"
 
-    # =========================
-    # STRIKEOUT
-    # =========================
     if (
         "strikeout" in text
         or "struck out" in text
@@ -63,15 +57,9 @@ def get_result_emoji(result_event: str, desc: str = ""):
     ):
         return "❌"
 
-    # =========================
-    # WALKS
-    # =========================
     if "walk" in text:
         return "🚶"
 
-    # =========================
-    # SINGLE / DOUBLE / TRIPLE
-    # =========================
     if "single" in text:
         return "🟢"
     if "double" in text and "double play" not in text:
@@ -79,9 +67,6 @@ def get_result_emoji(result_event: str, desc: str = ""):
     if "triple" in text:
         return "🟢"
 
-    # =========================
-    # DOUBLE PLAY (ALL VARIANTS)
-    # =========================
     if (
         "double play" in text
         or "grounded into dp" in text
@@ -92,21 +77,12 @@ def get_result_emoji(result_event: str, desc: str = ""):
     ):
         return "❌"
 
-    # =========================
-    # ERROR
-    # =========================
     if "error" in text:
         return "🟡"
 
-    # =========================
-    # STOLEN BASE
-    # =========================
     if "stolen base" in text:
         return "🏃"
 
-    # =========================
-    # OUT (generic fallback)
-    # =========================
     if "out" in text:
         return "❌"
 
@@ -166,6 +142,8 @@ if mode == "Game Feed":
             home_score = play.get("result", {}).get("homeScore")
 
             start_time = convert_to_et(play.get("about", {}).get("startTime"))
+
+            # ✅ BALL IN PLAY / END OF AT-BAT TIME
             end_time = convert_to_et(play.get("about", {}).get("endTime"))
 
             inning = play.get("about", {}).get("inning")
@@ -215,8 +193,15 @@ if mode == "Game Feed":
 
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
+
+            # =========================
+            # TIMING OUTPUT (UPDATED)
+            # =========================
             st.write(f"🕒 Start (ET): {ab['startTime']}")
-            st.write(f"🕒 End (ET): {ab['endTime']}")
+            st.write(f"🕒 End of At-Bat (ET): {ab['endTime']}")
+
+            # ✅ YOUR REQUESTED LINE
+            st.success(f"⚾ Ball in play ended at: {ab['endTime']}")
 
             st.markdown("### 🧩 Pitches")
 
