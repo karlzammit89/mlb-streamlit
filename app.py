@@ -45,9 +45,9 @@ def get_result_emoji(result_event: str, desc: str = ""):
     result_event = result_event.lower()
     desc = (desc or "").lower()
 
-    if "home_run" in result_event or "Home Run" in desc:
+    if "home_run" in result_event or "home run" in desc:
         return "💥"
-    if "strikeout" in result_event:
+    if "strikeout" in result_event or "struck out" in result_event:
         return "❌"
     if "walk" in result_event or "intent_walk" in result_event:
         return "🚶"
@@ -59,7 +59,7 @@ def get_result_emoji(result_event: str, desc: str = ""):
         return "🟢"
     if "hit by pitch" in result_event:
         return "🟡"    
-    if "Grounded Into DP" in result_event:
+    if "grounded into double play" in result_event or "double play" in result_event:
         return "❌"           
     if "out" in result_event:
         return "❌"
