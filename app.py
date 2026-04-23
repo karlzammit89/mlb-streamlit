@@ -46,21 +46,25 @@ def get_result_emoji(result_event: str, desc: str = ""):
     desc = (desc or "").lower()
 
     if "home_run" in result_event or "home run" in desc:
-        return "💣"
+        return "💥"
     if "strikeout" in result_event:
-        return "🔥"
+        return "❌"
     if "walk" in result_event or "intent_walk" in result_event:
         return "🚶"
     if "single" in result_event:
         return "🟢"
     if "double" in result_event:
-        return "🟡"
+        return "🟢"
     if "triple" in result_event:
-        return "🟣"
+        return "🟢"
+    if "hit by pitch" in result_event:
+        return "🟢"    
+    if "Grounded Into DP" in result_event:
+        return "❌"           
     if "out" in result_event:
         return "❌"
     if "error" in result_event:
-        return "🧤"
+        return "🟡"
     if "stolen_base" in result_event:
         return "🏃"
 
@@ -163,7 +167,7 @@ if mode == "Game Feed":
             st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
             if score_changed:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} 🔥")
+                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} 🔥 SCORING PLAY 🔥")
             else:
                 st.write(f"🏟️ {ab['inning']} | 📊 {current_score}")
 
