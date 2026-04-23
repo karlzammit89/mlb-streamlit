@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 # =========================
@@ -17,23 +17,24 @@ mode = st.radio("Select Mode", ["Schedule", "Game Feed"])
 # HELPERS
 # =========================
 def convert_to_et(raw_time):
-    if raw_time:
-        try:
-            dt = datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
-            return dt.astimezone(ZoneInfo("America/New_York"))
-        except:
-            return None
-    return None
+    if not raw_time:
+        return None
+    try:
+        dt = datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
+        return dt.astimezone(ZoneInfo("America/New_York")).replace(microsecond=0)
+    except:
+        return None
 
 
-# ✅ FIXED: reliable EDT/EST labeling + no microseconds
 def convert_to_et_str(raw_time):
     dt = convert_to_et(raw_time)
-    if dt:
-        is_dst = bool(dt.dst())
-        tz_label = "EDT" if is_dst else "EST"
-        return dt.strftime(f"%Y-%m-%d %H:%M:%S {tz_label}")
-    return None
+    if not dt:
+        return None
+
+    is_dst = dt.dst() != timedelta(0)
+    tz_label = "EDT" if is_dst else "EST"
+
+    return dt.strftime(f"%Y-%m-%d %H:%M:%S {tz_label}")
 
 
 def get_result_emoji(result_event: str, desc: str = ""):
@@ -100,11 +101,7 @@ if mode == "Game Feed":
 
     game_pk = st.text_input("Enter Game ID", "823878")
 
-    # =========================
-    # INNING FILTER
-    # =========================
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
-
     TARGET_INNINGS = []
 
     if USE_INNING_FILTER:
@@ -114,9 +111,6 @@ if mode == "Game Feed":
             default=[1]
         )
 
-    # =========================
-    # TIME FILTER
-    # =========================
     USE_TIME_FILTER = st.checkbox("Filter by Actual Time (ET)", value=False)
 
     et_now = datetime.now(ZoneInfo("America/New_York"))
@@ -134,15 +128,8 @@ if mode == "Game Feed":
     END_TIME = None
 
     if USE_TIME_FILTER:
-        START_TIME = st.text_input(
-            "Start Time (YYYY-MM-DD HH:MM)",
-            value=st.session_state.start_time
-        )
-
-        END_TIME = st.text_input(
-            "End Time (YYYY-MM-DD HH:MM)",
-            value=st.session_state.end_time
-        )
+        START_TIME = st.text_input("Start Time (YYYY-MM-DD HH:MM)", st.session_state.start_time)
+        END_TIME = st.text_input("End Time (YYYY-MM-DD HH:MM)", st.session_state.end_time)
 
     # =========================
     # LOAD GAME
@@ -166,8 +153,8 @@ if mode == "Game Feed":
         # =========================
         for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
 
-            start_time = convert_to_et(play.get("about", {}).get("startTime"))
-            end_time = convert_to_et(play.get("about", {}).get("endTime"))
+            start_time = convert_to_et_str(play.get("about", {}).get("startTime"))
+            end_time = convert_to_et_str(play.get("about", {}).get("endTime"))
 
             result_event = play.get("result", {}).get("event")
             result_desc = play.get("result", {}).get("description")
@@ -202,7 +189,7 @@ if mode == "Game Feed":
             })
 
         # =========================
-        # INNING FILTER
+        # FILTER
         # =========================
         def inning_filter(ab):
             inning = ab.get("inning")
@@ -218,17 +205,13 @@ if mode == "Game Feed":
 
             return inning in TARGET_INNINGS
 
-        # =========================
-        # APPLY FILTERS
-        # =========================
         filtered_at_bats = []
 
         for ab in at_bats:
 
-            start_time = ab["startTime"]
-
-            if USE_TIME_FILTER and start_time and START_DT and END_DT:
-                if not (START_DT <= start_time <= END_DT):
+            if USE_TIME_FILTER and ab["startTime"] and START_DT and END_DT:
+                ab_dt = convert_to_et(ab["startTime"])
+                if not ab_dt or not (START_DT <= ab_dt <= END_DT):
                     continue
 
             if not inning_filter(ab):
