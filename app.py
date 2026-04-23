@@ -126,12 +126,17 @@ if mode == "Game Feed":
 
             start_time = convert_to_et(play.get("about", {}).get("startTime"))
 
+            # =========================
+            # 1. OFFICIAL AT-BAT END TIME
+            # =========================
+            end_time = convert_to_et(play.get("about", {}).get("endTime"))
+
             inning = play.get("about", {}).get("inning")
             half_inning = play.get("about", {}).get("halfInning", "")
             inning_display = f"{inning} ({half_inning})" if inning else "N/A"
 
             # =========================
-            # 🔥 KEY FIX: LAST PITCH START TIME
+            # 2. LAST PITCH START TIME
             # =========================
             last_pitch_start_time = None
 
@@ -147,6 +152,7 @@ if mode == "Game Feed":
                 "desc": result_desc,
                 "score": f"{away_score} - {home_score}",
                 "startTime": start_time,
+                "endTime": end_time,
                 "lastPitchTime": last_pitch_start_time,
                 "inning": inning_display,
                 "pitches": []
@@ -160,6 +166,49 @@ if mode == "Game Feed":
 
             at_bats.append(play_info)
 
+        # =========================
+        # OUTPUT
+        # =========================
+        prev_score = None
+
+        for ab in at_bats:
+
+            current_score = ab["score"]
+            score_changed = current_score != prev_score and prev_score is not None
+
+            emoji = get_result_emoji(ab["result"], ab["desc"])
+
+            st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
+
+            if score_changed:
+                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} 🔥 SCORING PLAY 🔥")
+            else:
+                st.write(f"🏟️ {ab['inning']} | 📊 {current_score}")
+
+            st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
+            st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
+
+            st.write(f"🕒 Start (ET): {ab['startTime']}")
+
+            # =========================
+            # BOTH TIMES (KEY FIX)
+            # =========================
+            st.write(f"🕒 At-Bat End (ET): {ab['endTime']}")
+            st.write(f"⚾ Last Pitch Thrown (ET): {ab['lastPitchTime']}")
+
+            st.success(f"⚾ Ball last in play at: {ab['lastPitchTime']}")
+
+            st.markdown("### 🧩 Pitches")
+
+            for i, p in enumerate(ab["pitches"], start=1):
+                if p:
+                    st.write(f"⚾ Pitch {i}: {p}")
+                else:
+                    st.write(f"⚾ Pitch {i}: (no description)")
+
+            st.divider()
+
+            prev_score = current_score
         # =========================
         # OUTPUT
         # =========================
