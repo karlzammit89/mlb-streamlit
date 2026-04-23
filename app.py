@@ -1,3 +1,73 @@
+import streamlit as st
+import requests
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+# =========================
+# TITLE
+# =========================
+st.title("⚾ MLB Dashboard")
+
+# =========================
+# REAL TIME CLOCK (ET)
+# =========================
+def get_now_et():
+    return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S %Z")
+
+st.sidebar.markdown("### 🕒 Current Eastern Time")
+st.sidebar.write(get_now_et())
+
+st.sidebar.markdown("---")
+st.sidebar.write("Tip: Refresh for latest plays")
+
+# =========================
+# MODE SELECTOR
+# =========================
+mode = st.radio("Select Mode", ["Schedule", "Game Feed"])
+
+# =========================
+# HELPERS
+# =========================
+def convert_to_et(raw_time):
+    if raw_time:
+        try:
+            dt = datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
+            return dt.astimezone(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S %Z")
+        except:
+            return None
+    return None
+
+
+# =========================
+# MODE 1 — SCHEDULE
+# =========================
+if mode == "Schedule":
+
+    date = st.text_input("Enter date (YYYY-MM-DD)", "2026-04-22")
+
+    if st.button("Load Games"):
+
+        url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date}"
+        data = requests.get(url).json()
+
+        games = [
+            {
+                "gamePk": g["gamePk"],
+                "matchup": f'{g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}',
+                "time": convert_to_et(g.get("gameDate"))
+            }
+            for d in data.get("dates", [])
+            for g in d.get("games", [])
+        ]
+
+        if games:
+            for game in games:
+                time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
+                st.write(f"{game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only} (ET)")
+        else:
+            st.warning("No games found")
+
+
 # =========================
 # MODE 2 — GAME FEED (ESPN STYLE)
 # =========================
@@ -45,7 +115,7 @@ if mode == "Game Feed":
             at_bats.append(play_info)
 
         # =========================
-        # OUTPUT (ESPN STYLE)
+        # OUTPUT
         # =========================
         prev_score = None
 
@@ -55,10 +125,10 @@ if mode == "Game Feed":
 
             result = (ab["result"] or "").lower()
 
-            # ===== RESULT EMOJI LOGIC =====
+            # ===== RESULT EMOJI =====
             if "home run" in result:
                 result_emoji = "💥"
-            elif "double" in result or "triple" in result:
+            elif "triple" in result or "double" in result:
                 result_emoji = "🚀"
             elif "single" in result:
                 result_emoji = "🟢"
@@ -71,7 +141,7 @@ if mode == "Game Feed":
             else:
                 result_emoji = "⚾"
 
-            # ===== HEADER (LIKE ESPN PLAY) =====
+            # ===== PLAY HEADER =====
             if score_changed:
                 st.markdown(
                     f"### 🔥 {ab['inning']} | {current_score}  \n"
@@ -90,21 +160,16 @@ if mode == "Game Feed":
 
             # ===== PITCH TIMELINE =====
             pitch_line = ""
-
             is_out = "out" in result
 
             for pitch in ab["pitches"]:
-                if not pitch["desc"]:
-                    continue
+                desc = (pitch["desc"] or "").lower()
 
                 if pitch["in_play"]:
-                    if is_out:
-                        pitch_line += "❌ "
-                    else:
-                        pitch_line += "✅ "
-                elif "strike" in pitch["desc"].lower():
+                    pitch_line += "❌ " if is_out else "✅ "
+                elif "strike" in desc:
                     pitch_line += "• "
-                elif "ball" in pitch["desc"].lower():
+                elif "ball" in desc:
                     pitch_line += "◦ "
                 else:
                     pitch_line += "· "
@@ -115,3 +180,9 @@ if mode == "Game Feed":
             st.divider()
 
             prev_score = current_score
+
+
+# =========================
+# FOOTER
+# =========================
+st.caption("⚾ ESPN-style MLB tracker • Data from MLB Stats API")
