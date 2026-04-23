@@ -26,10 +26,13 @@ def convert_to_et(raw_time):
     return None
 
 
+# ✅ FIXED: reliable EDT/EST labeling + no microseconds
 def convert_to_et_str(raw_time):
     dt = convert_to_et(raw_time)
     if dt:
-        return dt.strftime("%Y-%m-%d %H:%M:%S %Z")
+        is_dst = bool(dt.dst())
+        tz_label = "EDT" if is_dst else "EST"
+        return dt.strftime(f"%Y-%m-%d %H:%M:%S {tz_label}")
     return None
 
 
@@ -98,7 +101,7 @@ if mode == "Game Feed":
     game_pk = st.text_input("Enter Game ID", "823878")
 
     # =========================
-    # INNING FILTER (NBA STYLE)
+    # INNING FILTER
     # =========================
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
 
@@ -112,7 +115,7 @@ if mode == "Game Feed":
         )
 
     # =========================
-    # TIME FILTER (NBA STYLE)
+    # TIME FILTER
     # =========================
     USE_TIME_FILTER = st.checkbox("Filter by Actual Time (ET)", value=False)
 
@@ -199,7 +202,7 @@ if mode == "Game Feed":
             })
 
         # =========================
-        # INNING FILTER LOGIC
+        # INNING FILTER
         # =========================
         def inning_filter(ab):
             inning = ab.get("inning")
@@ -224,12 +227,10 @@ if mode == "Game Feed":
 
             start_time = ab["startTime"]
 
-            # TIME FILTER
             if USE_TIME_FILTER and start_time and START_DT and END_DT:
                 if not (START_DT <= start_time <= END_DT):
                     continue
 
-            # INNING FILTER
             if not inning_filter(ab):
                 continue
 
@@ -243,7 +244,6 @@ if mode == "Game Feed":
         for ab in filtered_at_bats:
 
             emoji = get_result_emoji(ab["result"], ab["desc"])
-
             inning_label = f"{ab['inning']} ({ab['half_inning']})" if ab["inning"] else "N/A"
 
             st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
@@ -268,7 +268,4 @@ if mode == "Game Feed":
 
             prev_score = ab["score"]
 
-        # =========================
-        # TOTAL EVENTS COUNT
-        # =========================
         st.success(f"Loaded {len(filtered_at_bats)} events")
