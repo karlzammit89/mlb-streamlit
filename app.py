@@ -9,16 +9,6 @@ from zoneinfo import ZoneInfo
 st.title("⚾ MLB Dashboard")
 
 # =========================
-# CLOCK (ET)
-# =========================
-def get_now_et():
-    return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S %Z")
-
-st.sidebar.markdown("### 🕒 Latest update at")
-st.sidebar.write(get_now_et())
-st.sidebar.markdown("---")
-
-# =========================
 # MODE
 # =========================
 mode = st.radio("Select Mode", ["Schedule", "Game Feed"])
@@ -107,15 +97,9 @@ if mode == "Game Feed":
 
     game_pk = st.text_input("Enter Game ID", "823878")
 
-    # =========================
-    # INNING FILTER
-    # =========================
     inning_options = ["All"] + [str(i) for i in range(1, 10)] + ["Extra Innings"]
     selected_inning = st.selectbox("Select Inning", inning_options)
 
-    # =========================
-    # REAL TIME FILTER (NEW)
-    # =========================
     USE_TIME_FILTER = st.checkbox("Filter by Actual Time (ET)", value=False)
 
     et_now = datetime.now(ZoneInfo("America/New_York"))
@@ -132,21 +116,9 @@ if mode == "Game Feed":
     END_TIME = None
 
     if USE_TIME_FILTER:
-        START_TIME = st.text_input(
-            "Start Time (YYYY-MM-DD HH:MM)",
-            value=st.session_state.start_time,
-            key="start_time"
-        )
+        START_TIME = st.text_input("Start Time (YYYY-MM-DD HH:MM)", st.session_state.start_time)
+        END_TIME = st.text_input("End Time (YYYY-MM-DD HH:MM)", st.session_state.end_time)
 
-        END_TIME = st.text_input(
-            "End Time (YYYY-MM-DD HH:MM)",
-            value=st.session_state.end_time,
-            key="end_time"
-        )
-
-    # =========================
-    # LOAD GAME
-    # =========================
     if st.button("Load Game Feed"):
 
         url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
@@ -161,17 +133,11 @@ if mode == "Game Feed":
             START_DT = datetime.fromisoformat(START_TIME).replace(tzinfo=ZoneInfo("America/New_York"))
             END_DT = datetime.fromisoformat(END_TIME).replace(tzinfo=ZoneInfo("America/New_York"))
 
-        # =========================
-        # BUILD PLAY DATA
-        # =========================
         for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
 
             start_time = convert_to_et(play.get("about", {}).get("startTime"))
             end_time = convert_to_et(play.get("about", {}).get("endTime"))
 
-            # =========================
-            # REAL TIME FILTER (APPLIED HERE)
-            # =========================
             if USE_TIME_FILTER and start_time and START_DT and END_DT:
                 if not (START_DT <= start_time <= END_DT):
                     continue
@@ -185,8 +151,7 @@ if mode == "Game Feed":
             inning = play.get("about", {}).get("inning")
             half_inning = play.get("about", {}).get("halfInning", "")
 
-            inning_raw = inning if inning is not None else None
-            inning_label = f"{inning_raw} ({half_inning})" if inning_raw else "N/A"
+            inning_label = f"{inning} ({half_inning})" if inning else "N/A"
 
             last_pitch_time = None
             pitches = []
@@ -211,9 +176,6 @@ if mode == "Game Feed":
                 "pitches": pitches
             })
 
-        # =========================
-        # INNING FILTER
-        # =========================
         def inning_filter(ab):
             inning = ab.get("inning_raw")
 
@@ -226,9 +188,6 @@ if mode == "Game Feed":
 
         filtered_at_bats = list(filter(inning_filter, at_bats))
 
-        # =========================
-        # OUTPUT
-        # =========================
         prev_score = None
 
         for ab in filtered_at_bats:
@@ -237,9 +196,7 @@ if mode == "Game Feed":
 
             st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
-            score_changed = ab["score"] != prev_score and prev_score is not None
-
-            if score_changed:
+            if ab["score"] != prev_score and prev_score is not None:
                 st.write(f"🏟️ {ab['inning']} | 📊 {ab['score']} 🔥 SCORING PLAY 🔥")
             else:
                 st.write(f"🏟️ {ab['inning']} | 📊 {ab['score']}")
