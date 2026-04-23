@@ -54,9 +54,9 @@ def get_result_emoji(result_event: str, desc: str = ""):
     if "single" in result_event:
         return "🟢"
     if "double" in result_event:
-        return "🟡"
+        return "🟢"
     if "triple" in result_event:
-        return "🟣"
+        return "🟢"
     if "out" in result_event:
         return "❌"
     if "error" in result_event:
@@ -163,9 +163,9 @@ if mode == "Game Feed":
             st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
             if score_changed:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} {emoji} 🔥")
+                st.write(f"🏟️ {ab['inning']} | 📊 {current_score}")
             else:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} {emoji}")
+                st.write(f"🏟️ {ab['inning']} | 📊 {current_score}")
 
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
