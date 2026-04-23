@@ -16,7 +16,6 @@ def get_now_et():
 
 st.sidebar.markdown("### 🕒 Current Eastern Time")
 st.sidebar.write(get_now_et())
-
 st.sidebar.markdown("---")
 
 # =========================
@@ -108,6 +107,9 @@ if mode == "Game Feed":
 
         at_bats = []
 
+        # =========================
+        # BUILD PLAY DATA
+        # =========================
         for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
 
             result_event = play.get("result", {}).get("event")
@@ -121,11 +123,14 @@ if mode == "Game Feed":
 
             inning = play.get("about", {}).get("inning")
             half_inning = play.get("about", {}).get("halfInning", "")
-            inning_display = f"{inning} ({half_inning})" if inning else "N/A"
 
-            # =========================
-            # LAST PITCH TIME
-            # =========================
+            inning_raw = inning if inning is not None else None
+
+            if inning_raw is not None and inning_raw >= 10:
+                inning_label = f"10+ ({half_inning})"
+            else:
+                inning_label = f"{inning_raw} ({half_inning})" if inning_raw else "N/A"
+
             last_pitch_time = None
             for event in play.get("playEvents", []):
                 if event.get("isPitch"):
@@ -141,7 +146,8 @@ if mode == "Game Feed":
                 "startTime": start_time,
                 "endTime": end_time,
                 "lastPitchTime": last_pitch_time,
-                "inning": inning_display,
+                "inning": inning_label,
+                "inning_raw": inning_raw,
                 "pitches": []
             }
 
@@ -154,11 +160,31 @@ if mode == "Game Feed":
             at_bats.append(play_info)
 
         # =========================
+        # INNING FILTER (SIDEBAR)
+        # =========================
+        st.sidebar.markdown("### 🧾 Inning Filter")
+
+        inning_options = ["All"] + [str(i) for i in range(1, 10)] + ["10+"]
+        selected_inning = st.sidebar.selectbox("Select Inning", inning_options)
+
+        def inning_filter(ab):
+            inning = ab.get("inning_raw")
+
+            if selected_inning == "All":
+                return True
+            elif selected_inning == "10+":
+                return inning is not None and inning >= 10
+            else:
+                return inning == int(selected_inning)
+
+        filtered_at_bats = list(filter(inning_filter, at_bats))
+
+        # =========================
         # OUTPUT
         # =========================
         prev_score = None
 
-        for ab in at_bats:
+        for ab in filtered_at_bats:
 
             current_score = ab["score"]
             score_changed = current_score != prev_score and prev_score is not None
@@ -175,9 +201,6 @@ if mode == "Game Feed":
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
 
-            # =========================
-            # FINAL TIMING OUTPUT (YOUR REQUEST)
-            # =========================
             st.write(f"🕒 At Bat Start Time: {ab['startTime']}")
             st.success(f"⚾ Last Pitch Thrown: {ab['lastPitchTime']}")
             st.write(f"🕒 At Bat End Time: {ab['endTime']}")
@@ -185,10 +208,7 @@ if mode == "Game Feed":
             st.markdown("### 🧩 Pitches")
 
             for i, p in enumerate(ab["pitches"], start=1):
-                if p:
-                    st.write(f"⚾ Pitch {i}: {p}")
-                else:
-                    st.write(f"⚾ Pitch {i}: (no description)")
+                st.write(f"⚾ Pitch {i}: {p if p else '(no description)'}")
 
             st.divider()
 
