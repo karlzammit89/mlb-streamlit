@@ -178,9 +178,9 @@ if mode == "Game Feed":
             # =========================
             # FINAL TIMING OUTPUT (YOUR REQUEST)
             # =========================
-            st.write(f"🕒 Start of At-Bat (ET): {ab['startTime']}")
-            st.write(f"⚾ Ball Last in Play (Last Pitch Thrown, ET): {ab['lastPitchTime']}")
-            st.write(f"🕒 At-Bat End (ET): {ab['endTime']}")
+            st.write(f"🕒 Start of At-Bat: {ab['startTime']}")
+            st.success(f"⚾ Last Pitch Thrown: {ab['lastPitchTime']}")
+            st.write(f"🕒 At-Bat End: {ab['endTime']}")
 
             st.markdown("### 🧩 Pitches")
 
