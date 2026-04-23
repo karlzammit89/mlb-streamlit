@@ -101,11 +101,11 @@ if mode == "Game Feed":
     game_pk = st.text_input("Enter Game ID", "823878")
 
     # =========================
-    # INNING FILTER (NOW ON MAIN PAGE)
+    # INNING FILTER (MAIN PAGE)
     # =========================
     st.markdown("### 🧾 Inning Filter")
 
-    inning_options = ["All"] + [str(i) for i in range(1, 10)] + ["10+"]
+    inning_options = ["All"] + [str(i) for i in range(1, 10)] + ["Extra Innings"]
     selected_inning = st.selectbox("Select Inning", inning_options)
 
     if st.button("Load Game Feed"):
@@ -115,6 +115,9 @@ if mode == "Game Feed":
 
         at_bats = []
 
+        # =========================
+        # BUILD PLAY DATA
+        # =========================
         for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
 
             result_event = play.get("result", {}).get("event")
@@ -132,7 +135,7 @@ if mode == "Game Feed":
             inning_raw = inning if inning is not None else None
 
             if inning_raw is not None and inning_raw >= 10:
-                inning_label = f"10+ ({half_inning})"
+                inning_label = f"Extra Innings ({half_inning})"
             else:
                 inning_label = f"{inning_raw} ({half_inning})" if inning_raw else "N/A"
 
@@ -165,6 +168,11 @@ if mode == "Game Feed":
             at_bats.append(play_info)
 
         # =========================
+        # FULL GAME SCORE (IMPORTANT FIX)
+        # =========================
+        full_game_score = at_bats[-1]["score"] if at_bats else "N/A"
+
+        # =========================
         # FILTER LOGIC
         # =========================
         def inning_filter(ab):
@@ -172,7 +180,7 @@ if mode == "Game Feed":
 
             if selected_inning == "All":
                 return True
-            elif selected_inning == "10+":
+            elif selected_inning == "Extra Innings":
                 return inning is not None and inning >= 10
             else:
                 return inning == int(selected_inning)
@@ -182,21 +190,14 @@ if mode == "Game Feed":
         # =========================
         # OUTPUT
         # =========================
-        prev_score = None
-
         for ab in filtered_at_bats:
-
-            current_score = ab["score"]
-            score_changed = current_score != prev_score and prev_score is not None
 
             emoji = get_result_emoji(ab["result"], ab["desc"])
 
             st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
-            if score_changed:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} 🔥 SCORING PLAY 🔥")
-            else:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score}")
+            # ✅ FULL GAME SCORE ALWAYS SHOWN
+            st.write(f"🏟️ {ab['inning']} | 📊 {full_game_score}")
 
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
@@ -211,8 +212,6 @@ if mode == "Game Feed":
                 st.write(f"⚾ Pitch {i}: {p if p else '(no description)'}")
 
             st.divider()
-
-            prev_score = current_score
 
 
 # =========================
