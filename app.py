@@ -38,6 +38,35 @@ def convert_to_et(raw_time):
     return None
 
 
+def get_result_emoji(result_event: str, desc: str = ""):
+    if not result_event:
+        return "⚾"
+
+    result_event = result_event.lower()
+    desc = (desc or "").lower()
+
+    if "home_run" in result_event or "home run" in desc:
+        return "💣"
+    if "strikeout" in result_event:
+        return "🔥"
+    if "walk" in result_event or "intent_walk" in result_event:
+        return "🚶"
+    if "single" in result_event:
+        return "🟢"
+    if "double" in result_event:
+        return "🟡"
+    if "triple" in result_event:
+        return "🟣"
+    if "out" in result_event:
+        return "❌"
+    if "error" in result_event:
+        return "🧤"
+    if "stolen_base" in result_event:
+        return "🏃"
+
+    return "⚾"
+
+
 # =========================
 # MODE 1 — SCHEDULE
 # =========================
@@ -120,22 +149,23 @@ if mode == "Game Feed":
             at_bats.append(play_info)
 
         # =========================
-        # OUTPUT (WITH FIRE EMOJI)
+        # OUTPUT (WITH DYNAMIC EMOJIS)
         # =========================
-        prev_score = None  # track previous score
+        prev_score = None
 
         for ab in at_bats:
-            current_score = ab["score"]
 
-            # Detect score change
+            current_score = ab["score"]
             score_changed = current_score != prev_score and prev_score is not None
 
-            st.subheader(f"⚾ At Bat {ab['atBatIndex']}")
+            emoji = get_result_emoji(ab["result"], ab["desc"])
+
+            st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
             if score_changed:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} 🔥")
+                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} {emoji} 🔥")
             else:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score}")
+                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} {emoji}")
 
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
@@ -152,7 +182,6 @@ if mode == "Game Feed":
 
             st.divider()
 
-            # Update previous score
             prev_score = current_score
 
 
