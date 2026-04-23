@@ -39,34 +39,76 @@ def convert_to_et(raw_time):
 
 
 def get_result_emoji(result_event: str, desc: str = ""):
-    if not result_event:
-        return "⚾"
+    text = f"{result_event or ''} {desc or ''}".lower()
 
-    result_event = result_event.lower()
-    desc = (desc or "").lower()
-
-    if "home_run" in result_event or "home run" in desc:
+    # =========================
+    # HOME RUN (all variants)
+    # =========================
+    if (
+        "home run" in text
+        or "homer" in text
+        or "home_run" in text
+        or "homerun" in text
+        or "hits a home run" in text
+    ):
         return "💥"
-    if "strikeout" in result_event or "struck out" in result_event:
+
+    # =========================
+    # STRIKEOUT
+    # =========================
+    if (
+        "strikeout" in text
+        or "struck out" in text
+        or "strike out" in text
+    ):
         return "❌"
-    if "walk" in result_event or "intent_walk" in result_event:
+
+    # =========================
+    # WALKS
+    # =========================
+    if "walk" in text:
         return "🚶"
-    if "single" in result_event:
+
+    # =========================
+    # SINGLE / DOUBLE / TRIPLE
+    # =========================
+    if "single" in text:
         return "🟢"
-    if "double" in result_event:
+    if "double" in text and "double play" not in text:
         return "🟢"
-    if "triple" in result_event:
+    if "triple" in text:
         return "🟢"
-    if "hit by pitch" in result_event:
-        return "🟡"    
-    if "grounded into double play" in result_event or "double play" in result_event:
-        return "❌"           
-    if "out" in result_event:
+
+    # =========================
+    # DOUBLE PLAY (ALL VARIANTS)
+    # =========================
+    if (
+        "double play" in text
+        or "grounded into dp" in text
+        or "grounded into double play" in text
+        or "force out double play" in text
+        or "lineout double play" in text
+        or "dp:" in text
+    ):
         return "❌"
-    if "error" in result_event:
+
+    # =========================
+    # ERROR
+    # =========================
+    if "error" in text:
         return "🟡"
-    if "stolen_base" in result_event:
+
+    # =========================
+    # STOLEN BASE
+    # =========================
+    if "stolen base" in text:
         return "🏃"
+
+    # =========================
+    # OUT (generic fallback)
+    # =========================
+    if "out" in text:
+        return "❌"
 
     return "⚾"
 
