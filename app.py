@@ -58,7 +58,7 @@ def get_result_emoji(result_event: str, desc: str = ""):
     if "triple" in result_event:
         return "🟢"
     if "hit by pitch" in result_event:
-        return "🟢"    
+        return "🟡"    
     if "Grounded Into DP" in result_event:
         return "❌"           
     if "out" in result_event:
