@@ -39,7 +39,7 @@ def convert_to_et(raw_time):
 def get_result_emoji(result_event: str, desc: str = ""):
     text = f"{result_event or ''} {desc or ''}".lower()
 
-    if "home run" in text or "homer" in text:
+    if "home run" in text:
         return "💥"
     if "strikeout" in text:
         return "❌"
@@ -100,6 +100,14 @@ if mode == "Game Feed":
 
     game_pk = st.text_input("Enter Game ID", "823878")
 
+    # =========================
+    # INNING FILTER (NOW ON MAIN PAGE)
+    # =========================
+    st.markdown("### 🧾 Inning Filter")
+
+    inning_options = ["All"] + [str(i) for i in range(1, 10)] + ["10+"]
+    selected_inning = st.selectbox("Select Inning", inning_options)
+
     if st.button("Load Game Feed"):
 
         url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
@@ -107,9 +115,6 @@ if mode == "Game Feed":
 
         at_bats = []
 
-        # =========================
-        # BUILD PLAY DATA
-        # =========================
         for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
 
             result_event = play.get("result", {}).get("event")
@@ -160,13 +165,8 @@ if mode == "Game Feed":
             at_bats.append(play_info)
 
         # =========================
-        # INNING FILTER (SIDEBAR)
+        # FILTER LOGIC
         # =========================
-        st.sidebar.markdown("### 🧾 Inning Filter")
-
-        inning_options = ["All"] + [str(i) for i in range(1, 10)] + ["10+"]
-        selected_inning = st.sidebar.selectbox("Select Inning", inning_options)
-
         def inning_filter(ab):
             inning = ab.get("inning_raw")
 
@@ -218,4 +218,4 @@ if mode == "Game Feed":
 # =========================
 # FOOTER
 # =========================
-st.caption("⚾ Load Game Feed to get Live feed timestamps")
+st.caption("⚾ MLB Dashboard – Live Game Feed")
