@@ -64,7 +64,7 @@ if mode == "Schedule":
             for game in games:
                 time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
 
-                st.write(f"🎮 {game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only} (ET)")
+                st.write(f" {game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only} (ET)")
         else:
             st.warning("No games found")
 
@@ -74,7 +74,7 @@ if mode == "Schedule":
 # =========================
 if mode == "Game Feed":
 
-    game_pk = st.text_input("Enter Game PK", "823878")
+    game_pk = st.text_input("Enter Game ID", "823878")
 
     if st.button("Load Game Feed"):
 
@@ -124,7 +124,7 @@ if mode == "Game Feed":
         # OUTPUT
         # =========================
         for ab in at_bats:
-            st.subheader(f"⚾ At-bat {ab['atBatIndex']}")
+            st.subheader(f"⚾ At Bat {ab['atBatIndex']}")
 
             st.write(f"🏟️ {ab['inning']} | 📊 {ab['score']}")
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
