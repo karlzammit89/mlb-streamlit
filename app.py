@@ -133,7 +133,7 @@ if mode == "Game Feed":
             st.subheader(f"⚾ At Bat {ab['atBatIndex']}")
 
             if score_changed:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} 🔥")
+                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} 🔥 SCORE CHANGE")
             else:
                 st.write(f"🏟️ {ab['inning']} | 📊 {current_score}")
 
