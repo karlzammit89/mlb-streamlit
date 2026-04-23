@@ -39,6 +39,27 @@ def convert_to_et(raw_time):
 
 
 # =========================
+# PITCH EMOJI HELPER
+# =========================
+def pitch_emoji(text: str):
+    if not text:
+        return "⚾"
+
+    t = text.lower()
+
+    if "home run" in t or "hr" in t:
+        return "💣"
+    elif "strikeout" in t or "struck out" in t or "strike out" in t:
+        return "❌"
+    elif "hit" in t or "single" in t or "double" in t or "triple" in t:
+        return "🟢"
+    elif "out" in t or "groundout" in t or "flyout" in t or "lineout" in t:
+        return "🔵"
+    else:
+        return "⚾"
+
+
+# =========================
 # MODE 1 — SCHEDULE
 # =========================
 if mode == "Schedule":
@@ -120,14 +141,12 @@ if mode == "Game Feed":
             at_bats.append(play_info)
 
         # =========================
-        # OUTPUT (WITH FIRE EMOJI)
+        # OUTPUT
         # =========================
-        prev_score = None  # track previous score
+        prev_score = None
 
         for ab in at_bats:
             current_score = ab["score"]
-
-            # Detect score change
             score_changed = current_score != prev_score and prev_score is not None
 
             st.subheader(f"⚾ At Bat {ab['atBatIndex']}")
@@ -146,13 +165,12 @@ if mode == "Game Feed":
 
             for i, p in enumerate(ab["pitches"], start=1):
                 if p:
-                    st.write(f"⚾ Pitch {i}: {p}")
+                    st.write(f"{pitch_emoji(p)} Pitch {i}: {p}")
                 else:
                     st.write(f"⚾ Pitch {i}: (no description)")
 
             st.divider()
 
-            # Update previous score
             prev_score = current_score
 
 
