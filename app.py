@@ -178,9 +178,9 @@ if mode == "Game Feed":
             # =========================
             # FINAL TIMING OUTPUT (YOUR REQUEST)
             # =========================
-            st.write(f"🕒 Start of At-Bat: {ab['startTime']}")
+            st.write(f"🕒 At Bat Start Time: {ab['startTime']}")
             st.success(f"⚾ Last Pitch Thrown: {ab['lastPitchTime']}")
-            st.write(f"🕒 At-Bat End: {ab['endTime']}")
+            st.write(f"🕒 At Bat End Time: {ab['endTime']}")
 
             st.markdown("### 🧩 Pitches")
 
@@ -198,4 +198,4 @@ if mode == "Game Feed":
 # =========================
 # FOOTER
 # =========================
-st.caption("MLB Dashboard ⚾ Live feed timestamps")
+st.caption("⚾ Load Game Feed to get Live feed timestamps")
