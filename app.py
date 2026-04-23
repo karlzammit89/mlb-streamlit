@@ -45,7 +45,7 @@ def get_result_emoji(result_event: str, desc: str = ""):
     result_event = result_event.lower()
     desc = (desc or "").lower()
 
-    if "home_run" in result_event or "home run" in desc:
+    if "home_run" in result_event or "Home Run" in desc:
         return "💥"
     if "strikeout" in result_event:
         return "❌"
