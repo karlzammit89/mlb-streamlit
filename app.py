@@ -98,22 +98,26 @@ if mode == "Game Feed":
     game_pk = st.text_input("Enter Game ID", "823878")
 
     # =========================
-    # INNING FILTER (TOGGLE STYLE)
+    # INNING FILTER (NBA STYLE)
     # =========================
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
 
-    selected_inning = "All"
+    TARGET_INNINGS = []
 
     if USE_INNING_FILTER:
-        inning_options = ["All"] + [str(i) for i in range(1, 10)] + ["Extra Innings"]
-        selected_inning = st.selectbox("Select Inning", inning_options)
+        TARGET_INNINGS = st.multiselect(
+            "Select Innings",
+            list(range(1, 10)) + ["Extra Innings"],
+            default=[1]
+        )
 
     # =========================
-    # TIME FILTER (EXISTING)
+    # TIME FILTER (NBA STYLE)
     # =========================
     USE_TIME_FILTER = st.checkbox("Filter by Actual Time (ET)", value=False)
 
     et_now = datetime.now(ZoneInfo("America/New_York"))
+
     today_start = et_now.replace(hour=0, minute=0, second=0, microsecond=0)
     today_end = et_now.replace(hour=23, minute=59, second=0, microsecond=0)
 
@@ -127,8 +131,15 @@ if mode == "Game Feed":
     END_TIME = None
 
     if USE_TIME_FILTER:
-        START_TIME = st.text_input("Start Time (YYYY-MM-DD HH:MM)", st.session_state.start_time)
-        END_TIME = st.text_input("End Time (YYYY-MM-DD HH:MM)", st.session_state.end_time)
+        START_TIME = st.text_input(
+            "Start Time (YYYY-MM-DD HH:MM)",
+            value=st.session_state.start_time
+        )
+
+        END_TIME = st.text_input(
+            "End Time (YYYY-MM-DD HH:MM)",
+            value=st.session_state.end_time
+        )
 
     # =========================
     # LOAD GAME
@@ -155,11 +166,6 @@ if mode == "Game Feed":
             start_time = convert_to_et(play.get("about", {}).get("startTime"))
             end_time = convert_to_et(play.get("about", {}).get("endTime"))
 
-            # TIME FILTER
-            if USE_TIME_FILTER and start_time and START_DT and END_DT:
-                if not (START_DT <= start_time <= END_DT):
-                    continue
-
             result_event = play.get("result", {}).get("event")
             result_desc = play.get("result", {}).get("description")
 
@@ -168,8 +174,6 @@ if mode == "Game Feed":
 
             inning = play.get("about", {}).get("inning")
             half_inning = play.get("about", {}).get("halfInning", "")
-
-            inning_label = f"{inning} ({half_inning})" if inning else "N/A"
 
             last_pitch_time = None
             pitches = []
@@ -186,31 +190,50 @@ if mode == "Game Feed":
                 "result": result_event,
                 "desc": result_desc,
                 "score": f"{away_score} - {home_score}",
-                "startTime": start_time.strftime("%Y-%m-%d %H:%M:%S %Z") if start_time else None,
-                "endTime": end_time.strftime("%Y-%m-%d %H:%M:%S %Z") if end_time else None,
+                "startTime": start_time,
+                "endTime": end_time,
                 "lastPitchTime": last_pitch_time,
-                "inning": inning_label,
-                "inning_raw": inning,
+                "inning": inning,
+                "half_inning": half_inning,
                 "pitches": pitches
             })
 
         # =========================
-        # INNING FILTER LOGIC
+        # INNING FILTER LOGIC (NBA STYLE)
         # =========================
         def inning_filter(ab):
-            inning = ab.get("inning_raw")
+            inning = ab.get("inning")
 
             if not USE_INNING_FILTER:
                 return True
 
-            if selected_inning == "All":
-                return True
-            elif selected_inning == "Extra Innings":
-                return inning is not None and inning >= 10
-            else:
-                return inning == int(selected_inning)
+            if inning is None:
+                return False
 
-        filtered_at_bats = list(filter(inning_filter, at_bats))
+            if "Extra Innings" in TARGET_INNINGS and inning >= 10:
+                return True
+
+            return inning in TARGET_INNINGS
+
+        # =========================
+        # APPLY FILTERS
+        # =========================
+        filtered_at_bats = []
+
+        for ab in at_bats:
+
+            start_time = ab["startTime"]
+
+            # TIME FILTER
+            if USE_TIME_FILTER and start_time and START_DT and END_DT:
+                if not (START_DT <= start_time <= END_DT):
+                    continue
+
+            # INNING FILTER
+            if not inning_filter(ab):
+                continue
+
+            filtered_at_bats.append(ab)
 
         # =========================
         # OUTPUT
@@ -221,12 +244,14 @@ if mode == "Game Feed":
 
             emoji = get_result_emoji(ab["result"], ab["desc"])
 
+            inning_label = f"{ab['inning']} ({ab['half_inning']})" if ab["inning"] else "N/A"
+
             st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
             if ab["score"] != prev_score and prev_score is not None:
-                st.write(f"🏟️ {ab['inning']} | 📊 {ab['score']} 🔥 SCORING PLAY 🔥")
+                st.write(f"🏟️ {inning_label} | 📊 {ab['score']} 🔥 SCORING PLAY 🔥")
             else:
-                st.write(f"🏟️ {ab['inning']} | 📊 {ab['score']}")
+                st.write(f"🏟️ {inning_label} | 📊 {ab['score']}")
 
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
