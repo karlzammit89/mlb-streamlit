@@ -134,17 +134,14 @@ if mode == "Game Feed":
 
             inning_raw = inning if inning is not None else None
 
-            if inning_raw is not None and inning_raw >= 10:
-                inning_label = f"Extra Innings ({half_inning})"
-            else:
-                inning_label = f"{inning_raw} ({half_inning})" if inning_raw else "N/A"
+            # ✅ ALWAYS SHOW REAL INNING NUMBER
+            inning_label = f"{inning_raw} ({half_inning})" if inning_raw else "N/A"
 
             last_pitch_time = None
             for event in play.get("playEvents", []):
                 if event.get("isPitch"):
                     last_pitch_time = convert_to_et(event.get("startTime"))
 
-            # ✅ SCORE STORED PER PLAY (CORRECT STATE)
             play_info = {
                 "atBatIndex": play.get("atBatIndex"),
                 "batter": play.get("matchup", {}).get("batter", {}).get("fullName"),
@@ -184,6 +181,11 @@ if mode == "Game Feed":
         filtered_at_bats = list(filter(inning_filter, at_bats))
 
         # =========================
+        # SCORE CHANGE TRACKING
+        # =========================
+        prev_score = None
+
+        # =========================
         # OUTPUT
         # =========================
         for ab in filtered_at_bats:
@@ -192,8 +194,13 @@ if mode == "Game Feed":
 
             st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
-            # ✅ CORRECT SCORE (PER PLAY)
-            st.write(f"🏟️ {ab['inning']} | 📊 {ab['score']}")
+            # 🔥 SCORING DETECTION
+            score_changed = ab["score"] != prev_score and prev_score is not None
+
+            if score_changed:
+                st.write(f"🏟️ {ab['inning']} | 📊 {ab['score']} 🔥 SCORING PLAY 🔥")
+            else:
+                st.write(f"🏟️ {ab['inning']} | 📊 {ab['score']}")
 
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
@@ -209,8 +216,11 @@ if mode == "Game Feed":
 
             st.divider()
 
+            # update tracker
+            prev_score = ab["score"]
+
 
 # =========================
 # FOOTER
 # =========================
-st.caption("⚾ MLB Dashboard – Accurate Game Feed View")
+st.caption("⚾ MLB Dashboard – Live Game Feed with Accurate Scoring")
