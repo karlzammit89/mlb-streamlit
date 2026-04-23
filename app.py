@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 st.title("⚾ MLB Dashboard")
 
 # =========================
-# REAL TIME CLOCK (ET)
+# CLOCK
 # =========================
 def get_now_et():
     return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S %Z")
@@ -18,10 +18,9 @@ st.sidebar.markdown("### 🕒 Current Eastern Time")
 st.sidebar.write(get_now_et())
 
 st.sidebar.markdown("---")
-st.sidebar.write("Auto-refresh updates timestamp")
 
 # =========================
-# MODE SELECTOR
+# MODE
 # =========================
 mode = st.radio("Select Mode", ["Schedule", "Game Feed"])
 
@@ -38,8 +37,29 @@ def convert_to_et(raw_time):
     return None
 
 
+def get_result_emoji(result_text: str):
+    """Simple ESPN-style outcome mapping"""
+    if not result_text:
+        return "⚾"
+
+    r = result_text.lower()
+
+    if "home run" in r:
+        return "💥"
+    elif "strikeout" in r:
+        return "⚡"
+    elif "walk" in r or "base on balls" in r:
+        return "🚶"
+    elif "single" in r or "double" in r or "triple" in r or "hit" in r:
+        return "🟢"
+    elif "out" in r:
+        return "❌"
+    else:
+        return "⚾"
+
+
 # =========================
-# MODE 1 — SCHEDULE
+# SCHEDULE
 # =========================
 if mode == "Schedule":
 
@@ -50,26 +70,19 @@ if mode == "Schedule":
         url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date}"
         data = requests.get(url).json()
 
-        games = [
-            {
-                "gamePk": g["gamePk"],
-                "matchup": f'{g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}',
-                "time": convert_to_et(g.get("gameDate"))
-            }
-            for d in data.get("dates", [])
-            for g in d.get("games", [])
-        ]
+        for d in data.get("dates", []):
+            for g in d.get("games", []):
 
-        if games:
-            for game in games:
-                time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
-                st.write(f"{game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only} (ET)")
-        else:
-            st.warning("No games found")
+                time = convert_to_et(g.get("gameDate"))
+                time_only = time.split(" ")[1][:5] if time else "N/A"
+
+                matchup = f'{g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}'
+
+                st.write(f"{g['gamePk']} | ⚾ {matchup} | 🕒 {time_only} (ET)")
 
 
 # =========================
-# MODE 2 — GAME FEED
+# GAME FEED (ESPN STYLE SIMPLE)
 # =========================
 if mode == "Game Feed":
 
@@ -80,83 +93,73 @@ if mode == "Game Feed":
         url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
         data = requests.get(url).json()
 
-        at_bats = []
+        prev_score = None
 
         for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
 
-            result_event = play.get("result", {}).get("event")
-            result_desc = play.get("result", {}).get("description")
+            result = play.get("result", {}).get("event", "")
+            desc = play.get("result", {}).get("description", "")
 
-            away_score = play.get("result", {}).get("awayScore")
-            home_score = play.get("result", {}).get("homeScore")
-
-            start_time = convert_to_et(play.get("about", {}).get("startTime"))
-            end_time = convert_to_et(play.get("about", {}).get("endTime"))
+            away = play.get("result", {}).get("awayScore")
+            home = play.get("result", {}).get("homeScore")
+            score = f"{away} - {home}"
 
             inning = play.get("about", {}).get("inning")
-            half_inning = play.get("about", {}).get("halfInning", "")
+            half = play.get("about", {}).get("halfInning", "")
+            inning_display = f"{inning} {half.upper()}"
 
-            inning_display = f"{inning} ({half_inning})" if inning else "N/A"
+            batter = play.get("matchup", {}).get("batter", {}).get("fullName")
+            pitcher = play.get("matchup", {}).get("pitcher", {}).get("fullName")
 
-            play_info = {
-                "atBatIndex": play.get("atBatIndex"),
-                "batter": play.get("matchup", {}).get("batter", {}).get("fullName"),
-                "pitcher": play.get("matchup", {}).get("pitcher", {}).get("fullName"),
-                "result": result_event,
-                "desc": result_desc,
-                "score": f"{away_score} - {home_score}",
-                "startTime": start_time,
-                "endTime": end_time,
-                "inning": inning_display,
-                "pitches": []
-            }
+            # 🔥 score change detection
+            score_changed = score != prev_score and prev_score is not None
 
-            for event in play.get("playEvents", []):
-                if event.get("isPitch"):
-                    play_info["pitches"].append(
-                        event.get("details", {}).get("description")
-                    )
+            emoji = get_result_emoji(result)
 
-            at_bats.append(play_info)
-
-        # =========================
-        # OUTPUT (WITH FIRE EMOJI)
-        # =========================
-        prev_score = None  # track previous score
-
-        for ab in at_bats:
-            current_score = ab["score"]
-
-            # Detect score change
-            score_changed = current_score != prev_score and prev_score is not None
-
-            st.subheader(f"⚾ At Bat {ab['atBatIndex']}")
+            st.subheader(f"⚾ At Bat {play.get('atBatIndex')}")
 
             if score_changed:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} 🔥")
+                st.write(f"🏟️ {inning_display} | 📊 {score} 🔥")
             else:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score}")
+                st.write(f"🏟️ {inning_display} | 📊 {score}")
 
-            st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
-            st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
-            st.write(f"🕒 Start (ET): {ab['startTime']}")
-            st.write(f"🕒 End (ET): {ab['endTime']}")
+            st.write(f"{emoji} **{batter}** vs 🧢 {pitcher}")
+            st.write(f"📌 {result} - {desc}")
 
-            st.markdown("### 🧩 Pitches")
+            # =========================
+            # SIMPLE PITCH LINE (OUTCOME ONLY)
+            # =========================
+            pitch_line = ""
 
-            for i, p in enumerate(ab["pitches"], start=1):
-                if p:
-                    st.write(f"⚾ Pitch {i}: {p}")
+            for event in play.get("playEvents", []):
+                if not event.get("isPitch"):
+                    continue
+
+                d = event.get("details", {})
+                text = (d.get("description") or "").lower()
+
+                if "strikeout" in text:
+                    pitch_line += "⚡ "
+                elif "home run" in text:
+                    pitch_line += "💥 "
+                elif "single" in text or "double" in text or "triple" in text or "hit" in text:
+                    pitch_line += "🟢 "
+                elif "out" in text:
+                    pitch_line += "❌ "
+                elif "walk" in text:
+                    pitch_line += "🚶 "
                 else:
-                    st.write(f"⚾ Pitch {i}: (no description)")
+                    pitch_line += "⚾ "
+
+            if pitch_line:
+                st.write(f"**Result Flow:** {pitch_line.strip()}")
 
             st.divider()
 
-            # Update previous score
-            prev_score = current_score
+            prev_score = score
 
 
 # =========================
 # FOOTER
 # =========================
-st.caption("Tip: refresh page to update live timestamps ⚾")
+st.caption("⚾ Simple ESPN-style MLB tracker")
