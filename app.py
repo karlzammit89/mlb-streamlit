@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 st.title("⚾ MLB Dashboard")
 
 # =========================
-# REAL TIME CLOCK (ET)
+# CLOCK (ET)
 # =========================
 def get_now_et():
     return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S %Z")
@@ -19,7 +19,7 @@ st.sidebar.write(get_now_et())
 st.sidebar.markdown("---")
 
 # =========================
-# MODE SELECTOR
+# MODE
 # =========================
 mode = st.radio("Select Mode", ["Schedule", "Game Feed"])
 
@@ -101,7 +101,7 @@ if mode == "Game Feed":
     game_pk = st.text_input("Enter Game ID", "823878")
 
     # =========================
-    # INNING FILTER (MAIN PAGE)
+    # INNING FILTER
     # =========================
     st.markdown("### 🧾 Inning Filter")
 
@@ -144,6 +144,7 @@ if mode == "Game Feed":
                 if event.get("isPitch"):
                     last_pitch_time = convert_to_et(event.get("startTime"))
 
+            # ✅ SCORE STORED PER PLAY (CORRECT STATE)
             play_info = {
                 "atBatIndex": play.get("atBatIndex"),
                 "batter": play.get("matchup", {}).get("batter", {}).get("fullName"),
@@ -166,11 +167,6 @@ if mode == "Game Feed":
                     )
 
             at_bats.append(play_info)
-
-        # =========================
-        # FULL GAME SCORE (IMPORTANT FIX)
-        # =========================
-        full_game_score = at_bats[-1]["score"] if at_bats else "N/A"
 
         # =========================
         # FILTER LOGIC
@@ -196,8 +192,8 @@ if mode == "Game Feed":
 
             st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
-            # ✅ FULL GAME SCORE ALWAYS SHOWN
-            st.write(f"🏟️ {ab['inning']} | 📊 {full_game_score}")
+            # ✅ CORRECT SCORE (PER PLAY)
+            st.write(f"🏟️ {ab['inning']} | 📊 {ab['score']}")
 
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
@@ -217,4 +213,4 @@ if mode == "Game Feed":
 # =========================
 # FOOTER
 # =========================
-st.caption("⚾ MLB Dashboard – Live Game Feed")
+st.caption("⚾ MLB Dashboard – Accurate Game Feed View")
