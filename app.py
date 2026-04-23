@@ -199,7 +199,7 @@ if mode == "Game Feed":
             })
 
         # =========================
-        # INNING FILTER LOGIC (NBA STYLE)
+        # INNING FILTER LOGIC
         # =========================
         def inning_filter(ab):
             inning = ab.get("inning")
@@ -267,3 +267,8 @@ if mode == "Game Feed":
             st.divider()
 
             prev_score = ab["score"]
+
+        # =========================
+        # TOTAL EVENTS COUNT
+        # =========================
+        st.success(f"Loaded {len(filtered_at_bats)} events")
