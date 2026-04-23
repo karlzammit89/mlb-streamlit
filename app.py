@@ -54,9 +54,9 @@ def get_result_emoji(result_event: str, desc: str = ""):
     if "single" in result_event:
         return "🟢"
     if "double" in result_event:
-        return "🟢"
+        return "🟡"
     if "triple" in result_event:
-        return "🟢"
+        return "🟣"
     if "out" in result_event:
         return "❌"
     if "error" in result_event:
@@ -65,6 +65,20 @@ def get_result_emoji(result_event: str, desc: str = ""):
         return "🏃"
 
     return "⚾"
+
+
+def get_half_inning_emoji(half_inning: str):
+    if not half_inning:
+        return ""
+
+    half_inning = half_inning.lower()
+
+    if half_inning == "top":
+        return "🔼"
+    if half_inning == "bottom":
+        return "🔽"
+
+    return ""
 
 
 # =========================
@@ -125,7 +139,12 @@ if mode == "Game Feed":
             inning = play.get("about", {}).get("inning")
             half_inning = play.get("about", {}).get("halfInning", "")
 
-            inning_display = f"{inning} ({half_inning})" if inning else "N/A"
+            half_inning_display = get_half_inning_emoji(half_inning)
+
+            if inning:
+                inning_display = f"{half_inning_display} {inning}"
+            else:
+                inning_display = "N/A"
 
             play_info = {
                 "atBatIndex": play.get("atBatIndex"),
@@ -149,7 +168,7 @@ if mode == "Game Feed":
             at_bats.append(play_info)
 
         # =========================
-        # OUTPUT (WITH DYNAMIC EMOJIS)
+        # OUTPUT
         # =========================
         prev_score = None
 
@@ -162,10 +181,7 @@ if mode == "Game Feed":
 
             st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
-            if score_changed:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score}")
-            else:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score}")
+            st.write(f"🏟️ {ab['inning']} | 📊 {current_score}")
 
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
