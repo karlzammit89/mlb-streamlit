@@ -63,8 +63,7 @@ if mode == "Schedule":
         if games:
             for game in games:
                 time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
-
-                st.write(f" {game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only} (ET)")
+                st.write(f"{game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only} (ET)")
         else:
             st.warning("No games found")
 
@@ -121,12 +120,23 @@ if mode == "Game Feed":
             at_bats.append(play_info)
 
         # =========================
-        # OUTPUT
+        # OUTPUT (WITH FIRE EMOJI)
         # =========================
+        prev_score = None  # track previous score
+
         for ab in at_bats:
+            current_score = ab["score"]
+
+            # Detect score change
+            score_changed = current_score != prev_score and prev_score is not None
+
             st.subheader(f"⚾ At Bat {ab['atBatIndex']}")
 
-            st.write(f"🏟️ {ab['inning']} | 📊 {ab['score']}")
+            if score_changed:
+                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} 🔥")
+            else:
+                st.write(f"🏟️ {ab['inning']} | 📊 {current_score}")
+
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
             st.write(f"🕒 Start (ET): {ab['startTime']}")
@@ -140,8 +150,10 @@ if mode == "Game Feed":
                 else:
                     st.write(f"⚾ Pitch {i}: (no description)")
 
-            # 👇 SEPARATOR LINE BETWEEN AT-BATS
             st.divider()
+
+            # Update previous score
+            prev_score = current_score
 
 
 # =========================
