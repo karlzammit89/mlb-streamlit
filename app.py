@@ -18,7 +18,6 @@ st.sidebar.markdown("### 🕒 Current Eastern Time")
 st.sidebar.write(get_now_et())
 
 st.sidebar.markdown("---")
-st.sidebar.write("Auto-refresh updates timestamp")
 
 # =========================
 # MODE SELECTOR
@@ -41,31 +40,24 @@ def convert_to_et(raw_time):
 def get_result_emoji(result_event: str, desc: str = ""):
     text = f"{result_event or ''} {desc or ''}".lower()
 
-    if "home run" in text or "homer" in text or "home_run" in text or "homerun" in text:
+    if "home run" in text or "homer" in text:
         return "💥"
-
-    if "strikeout" in text or "struck out" in text:
+    if "strikeout" in text:
         return "❌"
-
     if "walk" in text:
         return "🚶"
-
     if "single" in text:
         return "🟢"
     if "double" in text and "double play" not in text:
         return "🟢"
     if "triple" in text:
         return "🟢"
-
-    if "double play" in text or "grounded into dp" in text or "dp:" in text:
+    if "double play" in text:
         return "❌"
-
     if "error" in text:
         return "🟡"
-
     if "stolen base" in text:
         return "🏃"
-
     if "out" in text:
         return "❌"
 
@@ -125,10 +117,6 @@ if mode == "Game Feed":
             home_score = play.get("result", {}).get("homeScore")
 
             start_time = convert_to_et(play.get("about", {}).get("startTime"))
-
-            # =========================
-            # 1. OFFICIAL AT-BAT END TIME
-            # =========================
             end_time = convert_to_et(play.get("about", {}).get("endTime"))
 
             inning = play.get("about", {}).get("inning")
@@ -136,13 +124,12 @@ if mode == "Game Feed":
             inning_display = f"{inning} ({half_inning})" if inning else "N/A"
 
             # =========================
-            # 2. LAST PITCH START TIME
+            # LAST PITCH TIME
             # =========================
-            last_pitch_start_time = None
-
+            last_pitch_time = None
             for event in play.get("playEvents", []):
                 if event.get("isPitch"):
-                    last_pitch_start_time = convert_to_et(event.get("startTime"))
+                    last_pitch_time = convert_to_et(event.get("startTime"))
 
             play_info = {
                 "atBatIndex": play.get("atBatIndex"),
@@ -153,7 +140,7 @@ if mode == "Game Feed":
                 "score": f"{away_score} - {home_score}",
                 "startTime": start_time,
                 "endTime": end_time,
-                "lastPitchTime": last_pitch_start_time,
+                "lastPitchTime": last_pitch_time,
                 "inning": inning_display,
                 "pitches": []
             }
@@ -188,56 +175,12 @@ if mode == "Game Feed":
             st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
             st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
 
-            st.write(f"🕒 Start (ET): {ab['startTime']}")
-
             # =========================
-            # BOTH TIMES (KEY FIX)
+            # FINAL TIMING OUTPUT (YOUR REQUEST)
             # =========================
+            st.write(f"🕒 Start of At-Bat (ET): {ab['startTime']}")
+            st.write(f"⚾ Ball Last in Play (Last Pitch Thrown, ET): {ab['lastPitchTime']}")
             st.write(f"🕒 At-Bat End (ET): {ab['endTime']}")
-            st.write(f"⚾ Last Pitch Thrown (ET): {ab['lastPitchTime']}")
-
-            st.success(f"⚾ Ball last in play at: {ab['lastPitchTime']}")
-
-            st.markdown("### 🧩 Pitches")
-
-            for i, p in enumerate(ab["pitches"], start=1):
-                if p:
-                    st.write(f"⚾ Pitch {i}: {p}")
-                else:
-                    st.write(f"⚾ Pitch {i}: (no description)")
-
-            st.divider()
-
-            prev_score = current_score
-        # =========================
-        # OUTPUT
-        # =========================
-        prev_score = None
-
-        for ab in at_bats:
-
-            current_score = ab["score"]
-            score_changed = current_score != prev_score and prev_score is not None
-
-            emoji = get_result_emoji(ab["result"], ab["desc"])
-
-            st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
-
-            if score_changed:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score} 🔥 SCORING PLAY 🔥")
-            else:
-                st.write(f"🏟️ {ab['inning']} | 📊 {current_score}")
-
-            st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
-            st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
-
-            st.write(f"🕒 Start (ET): {ab['startTime']}")
-
-            # =========================
-            # ✅ FINAL FIX OUTPUT
-            # =========================
-            st.write(f"⚾ Last Pitch Thrown (ET): {ab['lastPitchTime']}")
-            st.success(f"⚾ Ball last in play at: {ab['lastPitchTime']}")
 
             st.markdown("### 🧩 Pitches")
 
@@ -255,4 +198,4 @@ if mode == "Game Feed":
 # =========================
 # FOOTER
 # =========================
-st.caption("Tip: refresh page to update live timestamps ⚾")
+st.caption("MLB Dashboard ⚾ Live feed timestamps")
