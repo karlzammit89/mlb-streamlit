@@ -241,7 +241,7 @@ if st.session_state.selected_game_pk:
 
 
 # =========================
-# SCHEDULE VIEW (COMPACT)
+# SCHEDULE VIEW (UPGRADED + COMPACT)
 # =========================
 else:
 
@@ -278,7 +278,7 @@ else:
         st.stop()
 
     # =========================
-    # COMPACT GRID
+    # 2-COLUMN COMPACT GRID
     # =========================
     cols = st.columns(2)
 
@@ -290,11 +290,12 @@ else:
 
             with st.container(border=True):
 
-                c1, c2 = st.columns([1, 4])
+                # layout: logos | info | GO
+                c1, c2, c3 = st.columns([1, 5, 1])
 
                 with c1:
-                    st.image(game["away_logo"], width=28)
-                    st.image(game["home_logo"], width=28)
+                    st.image(game["away_logo"], width=26)
+                    st.image(game["home_logo"], width=26)
 
                 with c2:
                     st.markdown(
@@ -302,6 +303,13 @@ else:
                         f"🕒 {time_str} | 🏷️ {game['status']}"
                     )
 
-                if st.button("▶", key=f"game_{game['gamePk']}"):
+                with c3:
+                    go_clicked = st.button(
+                        "▶ GO",
+                        key=f"go_{game['gamePk']}",
+                        use_container_width=True
+                    )
+
+                if go_clicked:
                     st.session_state.selected_game_pk = game["gamePk"]
                     st.rerun()
