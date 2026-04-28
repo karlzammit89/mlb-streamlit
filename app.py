@@ -39,6 +39,14 @@ def format_full_et(dt):
     return dt.strftime("%Y-%m-%d %H:%M:%S") + " ET"
 
 # =========================
+# INNING NORMALIZATION
+# =========================
+def normalize_inning(inning):
+    if inning is None:
+        return None
+    return "Extra Innings" if inning >= 10 else inning
+
+# =========================
 # EMOJIS
 # =========================
 def get_result_emoji(result_event: str, desc: str = ""):
@@ -91,7 +99,7 @@ if st.session_state.selected_game_pk:
     away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
 
     # =========================
-    # HEADER (FIXED ALIGNMENT)
+    # HEADER
     # =========================
     c1, c2, c3 = st.columns([1, 4, 1])
 
@@ -138,6 +146,8 @@ if st.session_state.selected_game_pk:
             if event.get("isPitch"):
                 last_pitch_dt = convert_to_et(event.get("startTime"))
 
+        raw_inning = play.get("about", {}).get("inning")
+
         at_bats.append({
             "atBatIndex": play.get("atBatIndex"),
             "batter": play.get("matchup", {}).get("batter", {}).get("fullName"),
@@ -146,7 +156,7 @@ if st.session_state.selected_game_pk:
             "desc": play.get("result", {}).get("description"),
             "away_score": play.get("result", {}).get("awayScore"),
             "home_score": play.get("result", {}).get("homeScore"),
-            "inning": play.get("about", {}).get("inning"),
+            "inning": normalize_inning(raw_inning),
             "half_inning": play.get("about", {}).get("halfInning"),
             "start_dt": start_dt,
             "end_dt": end_dt,
@@ -155,25 +165,48 @@ if st.session_state.selected_game_pk:
 
     run_filters = st.button("🚀 Apply Filters")
 
+    # =========================
+    # INNING FILTER OPTIONS
+    # =========================
+    all_innings = sorted(
+        {ab["inning"] for ab in at_bats if ab["inning"] is not None},
+        key=lambda x: (x == "Extra Innings", x if isinstance(x, int) else 999)
+    )
+
+    selected_innings = None
+    if USE_INNING_FILTER:
+        selected_innings = st.multiselect(
+            "Select innings",
+            options=all_innings,
+            default=all_innings
+        )
+
+    def inning_match(ab):
+        if not USE_INNING_FILTER:
+            return True
+        return ab["inning"] in selected_innings
+
+    def time_match(ab):
+        if not USE_TIME_FILTER:
+            return True
+        if not ab["start_dt"]:
+            return False
+        return START_DT <= ab["start_dt"] <= END_DT
+
     filtered = at_bats
 
     if run_filters:
-
-        def time_match(ab):
-            if not USE_TIME_FILTER:
-                return True
-            if not ab["start_dt"]:
-                return False
-            return START_DT <= ab["start_dt"] <= END_DT
-
-        filtered = [ab for ab in at_bats if time_match(ab)]
+        filtered = [
+            ab for ab in at_bats
+            if inning_match(ab) and time_match(ab)
+        ]
 
     prev_score = None
 
     for ab in filtered:
 
         emoji = get_result_emoji(ab["result"], ab["desc"])
-        inning_label = f"{ab['inning']} ({ab['half_inning']})" if ab["inning"] else "N/A"
+        inning_label = f"{ab['inning']} ({ab['half_inning']})"
 
         st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
