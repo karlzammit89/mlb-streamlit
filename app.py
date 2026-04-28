@@ -106,6 +106,7 @@ if mode == "Schedule":
                     if st.button(f"{game['gamePk']}", key=f"game_{game['gamePk']}"):
                         st.session_state.selected_game_pk = game["gamePk"]
                         st.session_state.mode = "Game Feed"
+                        st.rerun()
 
                 with col2:
                     st.write(f"⚾ {game['matchup']} | 🕒 {time_only} (ET)")
