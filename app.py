@@ -91,38 +91,7 @@ if st.session_state.selected_game_pk:
     st.markdown(f"## ⚾ {away_team} @ {home_team}")
 
     # =========================
-    # BUILD FILTER UI
-    # =========================
-    USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
-    USE_TIME_FILTER = st.checkbox("Filter by Actual Time (ET)", value=False)
-
-    TARGET_INNINGS = []
-    START_DT = None
-    END_DT = None
-
-    if USE_INNING_FILTER:
-        TARGET_INNINGS = st.multiselect(
-            "Select Innings",
-            list(range(1, 10)) + ["Extra Innings"],
-            default=[1]
-        )
-
-    if USE_TIME_FILTER:
-        col1, col2 = st.columns(2)
-
-        with col1:
-            start_date = st.date_input("Start Date", datetime.today(), key="start_date")
-            start_time = st.time_input("Start Time", datetime.now().time(), key="start_time")
-
-        with col2:
-            end_date = st.date_input("End Date", datetime.today(), key="end_date")
-            end_time = st.time_input("End Time", datetime.now().time(), key="end_time")
-
-        START_DT = datetime.combine(start_date, start_time).replace(tzinfo=ZoneInfo("America/New_York"))
-        END_DT = datetime.combine(end_date, end_time).replace(tzinfo=ZoneInfo("America/New_York"))
-
-    # =========================
-    # LOAD PLAYS
+    # BUILD PLAY DATA FIRST
     # =========================
     at_bats = []
 
@@ -164,13 +133,72 @@ if st.session_state.selected_game_pk:
         })
 
     # =========================
+    # FILTER UI
+    # =========================
+    USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
+    USE_TIME_FILTER = st.checkbox("Filter by Actual Game Time (Auto Range)", value=False)
+
+    TARGET_INNINGS = []
+
+    if USE_INNING_FILTER:
+        TARGET_INNINGS = st.multiselect(
+            "Select Innings",
+            list(range(1, 10)) + ["Extra Innings"],
+            default=[1]
+        )
+
+    START_DT = None
+    END_DT = None
+
+    # =========================
     # RUN FILTER BUTTON
     # =========================
-    run_filters = st.button("🚀 Apply Filters")
+    run_filters = st.button("🚀 Run Filters")
 
     filtered_at_bats = at_bats
 
+    # =========================
+    # APPLY FILTERS ONLY ON CLICK
+    # =========================
     if run_filters:
+
+        def parse_dt(t):
+            try:
+                return datetime.fromisoformat(
+                    t.replace(" EDT", "").replace(" EST", "").replace("Z", "+00:00")
+                ).astimezone(ZoneInfo("America/New_York"))
+            except:
+                return None
+
+        # AUTO DETECT GAME TIME RANGE
+        times = [parse_dt(ab["startTime"]) for ab in at_bats if ab["startTime"]]
+        times = [t for t in times if t]
+
+        if times:
+            game_start = min(times)
+            game_end = max(times)
+        else:
+            game_start = datetime.now(ZoneInfo("America/New_York"))
+            game_end = datetime.now(ZoneInfo("America/New_York"))
+
+        # UI ONLY FOR DISPLAY / OVERRIDE
+        if USE_TIME_FILTER:
+            col1, col2 = st.columns(2)
+
+            with col1:
+                start_date = st.date_input("Start Date", game_start.date(), key="start_date")
+                start_time = st.time_input("Start Time", game_start.time(), key="start_time")
+
+            with col2:
+                end_date = st.date_input("End Date", game_end.date(), key="end_date")
+                end_time = st.time_input("End Time", game_end.time(), key="end_time")
+
+            START_DT = datetime.combine(start_date, start_time).replace(
+                tzinfo=ZoneInfo("America/New_York")
+            )
+            END_DT = datetime.combine(end_date, end_time).replace(
+                tzinfo=ZoneInfo("America/New_York")
+            )
 
         def inning_match(ab):
             if not USE_INNING_FILTER:
@@ -186,16 +214,14 @@ if st.session_state.selected_game_pk:
 
 
         def time_match(ab):
-            if not USE_TIME_FILTER:
+            if not USE_TIME_FILTER or not START_DT or not END_DT:
                 return True
 
             if not ab["startTime"]:
                 return False
 
             try:
-                dt = datetime.fromisoformat(
-                    ab["startTime"].replace(" EDT", "").replace(" EST", "").replace("Z", "+00:00")
-                ).astimezone(ZoneInfo("America/New_York"))
+                dt = parse_dt(ab["startTime"])
             except:
                 return False
 
