@@ -110,7 +110,7 @@ if st.session_state.selected_game_pk:
                 font-size: clamp(12px, 2.2vw, 22px);
                 font-weight: 700;
             ">
-                ⚾ {away_team} {away_score} - {home_score} {home_team}
+                {away_team} {away_score} - {home_score} {home_team}
             </div>
             """,
             unsafe_allow_html=True
@@ -153,7 +153,7 @@ if st.session_state.selected_game_pk:
             "last_pitch_dt": last_pitch_dt,
         })
 
-    run_filters = st.button("🚀 Run Filters")
+    run_filters = st.button("🚀 Apply Filters")
 
     filtered = at_bats
 
