@@ -35,10 +35,7 @@ def convert_to_et_str(raw_time):
     if not dt:
         return None
 
-    is_dst = dt.dst() != timedelta(0)
-    tz_label = "EDT" if is_dst else "EST"
-
-    return dt.strftime(f"%Y-%m-%d %H:%M:%S {tz_label}")
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def get_result_emoji(result_event: str, desc: str = ""):
@@ -91,7 +88,7 @@ if st.session_state.selected_game_pk:
     # FILTERS
     # =========================
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
-    USE_TIME_FILTER = st.checkbox("Filter by actual time (ET)", value=False)
+    USE_TIME_FILTER = st.checkbox("🕒 Filter by actual time (ET)", value=False)
 
     TARGET_INNINGS = []
     START_DT = None
@@ -105,28 +102,62 @@ if st.session_state.selected_game_pk:
         )
 
     # =========================
-    # UPDATED TIME FILTER (CLEAN UI)
+    # TIME FILTER (AUTO INIT ONCE, THEN USER CONTROLLED)
     # =========================
     if USE_TIME_FILTER:
+
+        st.markdown("🕒 **Filter by actual time (ET)**")
+
+        play_times = []
+
+        for ab in st.session_state.get("cached_at_bats", []):
+            if ab.get("startTime"):
+                try:
+                    dt = datetime.fromisoformat(
+                        ab["startTime"]
+                        .replace(" EDT", "")
+                        .replace(" EST", "")
+                        .replace("Z", "+00:00")
+                    ).astimezone(ZoneInfo("America/New_York"))
+                    play_times.append(dt)
+                except:
+                    pass
+
+        # fallback safe defaults
+        if play_times:
+            default_start = min(play_times)
+            default_end = max(play_times)
+        else:
+            now = datetime.now()
+            default_start = now
+            default_end = now
+
+        if "time_filter_initialized" not in st.session_state:
+            st.session_state.time_filter_initialized = False
+
+        if not st.session_state.time_filter_initialized:
+            st.session_state.start_dt = default_start
+            st.session_state.end_dt = default_end
+            st.session_state.time_filter_initialized = True
 
         col1, col2 = st.columns(2)
 
         with col1:
-            start_dt = st.datetime_input(
+            st.session_state.start_dt = st.datetime_input(
                 "Start (ET)",
-                value=datetime.now(),
-                key="start_dt"
+                value=st.session_state.start_dt,
+                key="start_dt_input"
             )
 
         with col2:
-            end_dt = st.datetime_input(
+            st.session_state.end_dt = st.datetime_input(
                 "End (ET)",
-                value=datetime.now(),
-                key="end_dt"
+                value=st.session_state.end_dt,
+                key="end_dt_input"
             )
 
-        START_DT = start_dt.replace(tzinfo=ZoneInfo("America/New_York"))
-        END_DT = end_dt.replace(tzinfo=ZoneInfo("America/New_York"))
+        START_DT = st.session_state.start_dt.replace(tzinfo=ZoneInfo("America/New_York"))
+        END_DT = st.session_state.end_dt.replace(tzinfo=ZoneInfo("America/New_York"))
 
     # =========================
     # LOAD PLAYS
@@ -147,8 +178,8 @@ if st.session_state.selected_game_pk:
         inning = play.get("about", {}).get("inning")
         half_inning = play.get("about", {}).get("halfInning", "")
 
-        last_pitch_time = None
         pitches = []
+        last_pitch_time = None
 
         for event in play.get("playEvents", []):
             if event.get("isPitch"):
@@ -170,8 +201,11 @@ if st.session_state.selected_game_pk:
             "pitches": pitches
         })
 
+    # cache for time filter auto-init
+    st.session_state.cached_at_bats = at_bats
+
     # =========================
-    # FILTERS APPLY
+    # FILTER RUN
     # =========================
     run_filters = st.button("🚀 Run Filters")
 
@@ -201,7 +235,10 @@ if st.session_state.selected_game_pk:
 
             try:
                 dt = datetime.fromisoformat(
-                    ab["startTime"].replace(" EDT", "").replace(" EST", "").replace("Z", "+00:00")
+                    ab["startTime"]
+                    .replace(" EDT", "")
+                    .replace(" EST", "")
+                    .replace("Z", "+00:00")
                 ).astimezone(ZoneInfo("America/New_York"))
             except:
                 return False
@@ -234,13 +271,9 @@ if st.session_state.selected_game_pk:
         st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
         st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
 
-        st.write(f"🕒 At Bat Start Time: {ab['startTime']}")
-        st.success(f"🕒 Last Pitch Thrown: {ab['lastPitchTime']}")
-        st.write(f"🕒 At Bat End Time: {ab['endTime']}")
-
-        st.markdown("### 🧩 Pitches")
-        for i, p in enumerate(ab["pitches"], start=1):
-            st.write(f"⚾ Pitch {i}: {p if p else '(no description)'}")
+        st.write(f"🕒 Start: {ab['startTime']}")
+        st.write(f"🕒 End: {ab['endTime']}")
+        st.success(f"🕒 Last Pitch: {ab['lastPitchTime']}")
 
         st.divider()
 
@@ -248,7 +281,7 @@ if st.session_state.selected_game_pk:
 
 
 # =========================
-# SCHEDULE VIEW (UNCHANGED FROM YOUR LATEST VERSION)
+# SCHEDULE VIEW (COMPACT + SCORE + 24H)
 # =========================
 else:
 
@@ -270,9 +303,6 @@ else:
 
             status = g.get("status", {}).get("detailedState", "Scheduled")
 
-            away_score = g["teams"]["away"].get("score", 0)
-            home_score = g["teams"]["home"].get("score", 0)
-
             games.append({
                 "gamePk": g["gamePk"],
                 "away_name": away["name"],
@@ -281,14 +311,12 @@ else:
                 "home_logo": f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{home['id']}.svg",
                 "time": convert_to_et(g.get("gameDate")),
                 "status": status,
-                "away_score": away_score,
-                "home_score": home_score
+                "away_score": g["teams"]["away"].get("score", 0),
+                "home_score": g["teams"]["home"].get("score", 0)
             })
 
-    st.session_state.games = games
-
     if not games:
-        st.warning("No games found for this date")
+        st.warning("No games found")
         st.stop()
 
     cols = st.columns(2)
@@ -319,12 +347,6 @@ else:
                     )
 
                 with c3:
-                    go_clicked = st.button(
-                        "▶ GO",
-                        key=f"go_{game['gamePk']}",
-                        use_container_width=True
-                    )
-
-                if go_clicked:
-                    st.session_state.selected_game_pk = game["gamePk"]
-                    st.rerun()
+                    if st.button("▶ GO", key=f"go_{game['gamePk']}", use_container_width=True):
+                        st.session_state.selected_game_pk = game["gamePk"]
+                        st.rerun()
