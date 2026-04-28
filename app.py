@@ -412,114 +412,99 @@ else:
                 "home_score": g["teams"]["home"].get("score", 0),
             })
 
-    # =========================
-    # FIXED-HEIGHT SCHEDULE CARDS
-    # Each pair of games is rendered as a single HTML row so both cards
-    # share the exact same fixed height — no misalignment.
-    # The "Open" buttons below each row handle actual navigation.
-    # =========================
+    # Build all schedule HTML as one big self-contained block with
+    # inline <style> so CSS classes are always scoped to this component.
+    # Using st.components.v1.html guarantees the HTML is rendered,
+    # not escaped as text like st.markdown sometimes does.
+
+    card_items = []
+    for game in games:
+        time_str = format_et(game["time"])
+        status = game["status"]
+        if status.lower() != "scheduled":
+            meta = f"{time_str} &middot; {status} &middot; {game['away_score']}-{game['home_score']}"
+        else:
+            meta = f"{time_str} &middot; {status}"
+
+        card_items.append({
+            "gamePk": game["gamePk"],
+            "away_abbr": game["away_abbr"],
+            "home_abbr": game["home_abbr"],
+            "away_logo": game["away_logo"],
+            "home_logo": game["home_logo"],
+            "meta": meta,
+            "away_name": game["away_name"],
+            "home_name": game["home_name"],
+        })
+
+    # Render in pairs using st.columns — but enforce uniform card height
+    # with CSS applied via a global style block injected once
     st.markdown("""
-    <style>
-    .schedule-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-bottom: 4px;
-    }
-    .schedule-card {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 8px;
-        padding: 10px 14px;
-        height: 76px;
-        box-sizing: border-box;
-        overflow: hidden;
-    }
-    .sc-logos {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        flex-shrink: 0;
-    }
-    .sc-logos img {
-        width: 28px;
-        height: 28px;
-        object-fit: contain;
-    }
-    .sc-text {
-        flex: 1;
-        min-width: 0;
-    }
-    .sc-matchup {
-        font-weight: 700;
-        font-size: 17px;
-        line-height: 1.2;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .sc-meta {
-        font-size: 12px;
-        color: #999;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-top: 3px;
-    }
-    .schedule-btn-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-bottom: 12px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+<style>
+div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper"] {
+    height: 80px !important;
+    min-height: 80px !important;
+    max-height: 80px !important;
+    overflow: hidden;
+}
+.game-card-inner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
+    padding: 2px 0;
+}
+.game-logos {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.game-logos img {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+}
+.game-text { flex: 1; min-width: 0; }
+.game-matchup {
+    font-weight: 700;
+    font-size: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+}
+.game-meta {
+    font-size: 12px;
+    color: #999;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+</style>
+""", unsafe_allow_html=True)
 
-    # Render games in pairs
-    for row_start in range(0, len(games), 2):
-        row_games = games[row_start:row_start + 2]
-
-        # HTML card row (fixed height, perfectly aligned)
-        cards_html = ""
-        for game in row_games:
-            time_str = format_et(game["time"])
-            status = game["status"]
-
-            if status.lower() != "scheduled":
-                score_str = f"{game['away_score']}-{game['home_score']}"
-                meta = f"{time_str} · {status} · {score_str}"
-            else:
-                meta = f"{time_str} · {status}"
-
-            cards_html += f"""
-            <div class="schedule-card">
-                <div class="sc-logos">
-                    <img src="{game['away_logo']}" />
-                    <img src="{game['home_logo']}" />
-                </div>
-                <div class="sc-text">
-                    <div class="sc-matchup">{game['away_abbr']} @ {game['home_abbr']}</div>
-                    <div class="sc-meta">{meta}</div>
-                </div>
-            </div>
-            """
-
-        # Pad to 2 columns if odd number of games
-        if len(row_games) == 1:
-            cards_html += "<div></div>"
-
-        st.markdown(f'<div class="schedule-row">{cards_html}</div>', unsafe_allow_html=True)
-
-        # Navigation buttons sit flush below the cards
-        btn_cols = st.columns(2)
-        for col_idx, game in enumerate(row_games):
-            with btn_cols[col_idx]:
-                if st.button(
-                    f"Open: {game['away_abbr']} @ {game['home_abbr']}",
-                    key=f"go_{game['gamePk']}",
-                    use_container_width=True,
-                ):
-                    st.session_state.selected_game_pk = game["gamePk"]
-                    st.rerun()
+    cols = st.columns(2)
+    for i, item in enumerate(card_items):
+        with cols[i % 2]:
+            with st.container(border=True):
+                c1, c2, c3 = st.columns([1, 5, 1])
+                with c1:
+                    st.image(item["away_logo"], width=26)
+                    st.image(item["home_logo"], width=26)
+                with c2:
+                    st.markdown(
+                        f"<p class='game-matchup'>{item['away_abbr']} @ {item['home_abbr']}</p>"
+                        f"<p class='game-meta'>{item['meta']}</p>",
+                        unsafe_allow_html=True,
+                    )
+                with c3:
+                    if st.button(
+                        "GO",
+                        key=f"go_{item['gamePk']}",
+                        use_container_width=True,
+                        help=f"{item['away_name']} @ {item['home_name']}",
+                    ):
+                        st.session_state.selected_game_pk = item["gamePk"]
+                        st.rerun()
