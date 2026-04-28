@@ -84,7 +84,7 @@ def get_pitch_emoji(pitch_result: str):
     if "called strike" in r:
         return "🔴"
     if "swinging strike" in r:
-        return "💨"
+        return "🔴"
     if "foul" in r:
         return "🟡"
     if "in play" in r:
@@ -355,7 +355,7 @@ if st.session_state.selected_game_pk:
             st.markdown(f"🏟️ **Inning:** {inning_label} &nbsp;|&nbsp; 📊 **Score:** {score}")
 
         # Matchup
-        st.markdown(f"🥎 **Batter:** {ab['batter']} &nbsp;|&nbsp; 🧢 **Pitcher:** {ab['pitcher']}")
+        st.markdown(f"👤 **Batter:** {ab['batter']} &nbsp;|&nbsp; 🧢 **Pitcher:** {ab['pitcher']}")
 
         # Result
         st.markdown(f"📋 **Result:** {ab['result']}")
@@ -379,7 +379,7 @@ if st.session_state.selected_game_pk:
                     count_str = f"⚖️ Count: **{p['balls']}-{p['strikes']}**"
                     time_str = f"🕒 {format_full_et(p['start_time'])}" if p["start_time"] else ""
                     st.markdown(
-                        f"{p_emoji} **Pitch {p['num']}** — 🎳 {p['pitch_name']}{speed_str}  \n"
+                        f"{p_emoji} **Pitch {p['num']}** — 📌 {p['pitch_name']}{speed_str}  \n"
                         f"&nbsp;&nbsp;&nbsp;&nbsp;📣 *{p['call']}* &nbsp;|&nbsp; {count_str}"
                         + (f" &nbsp;|&nbsp; {time_str}" if time_str else "")
                     )
