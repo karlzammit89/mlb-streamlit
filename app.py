@@ -516,7 +516,7 @@ div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper
                     )
                 with c3:
                     if st.button(
-                        "GO",
+                        "▶️",
                         key=f"go_{item['gamePk']}",
                         use_container_width=True,
                         help=f"{item['away_name']} @ {item['home_name']}",
