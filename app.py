@@ -18,9 +18,15 @@ if "selected_game_pk" not in st.session_state:
     st.session_state.selected_game_pk = None
 
 # =========================
-# MODE
+# MODE (STATE DRIVEN FIX)
 # =========================
-mode = st.radio("Select Mode", ["Schedule", "Game Feed"], key="mode")
+mode = st.session_state.mode
+
+st.radio("Select Mode", ["Schedule", "Game Feed"], key="ui_mode")
+
+# sync UI → state (so radio still works manually)
+st.session_state.mode = st.session_state.ui_mode
+
 
 # =========================
 # HELPERS
@@ -74,9 +80,9 @@ def get_result_emoji(result_event: str, desc: str = ""):
 
 
 # =========================
-# MODE 1 — SCHEDULE
+# MODE 1 — SCHEDULE (FIXED CLICK NAVIGATION)
 # =========================
-if mode == "Schedule":
+if st.session_state.mode == "Schedule":
 
     date = st.date_input("Select date", datetime.today())
     date_str = date.strftime("%Y-%m-%d")
@@ -106,13 +112,10 @@ if mode == "Schedule":
 
                 with st.container():
 
-                    # This acts like a clickable row
-                    clicked = st.button(
-                        f"⚾ {game['matchup']}  |  🕒 {time_only} (ET)  |  ID: {game['gamePk']}",
-                        key=f"row_{game['gamePk']}"
-                    )
-
-                    if clicked:
+                    if st.button(
+                        f"⚾ {game['matchup']} | 🕒 {time_only} (ET) | ID: {game['gamePk']}",
+                        key=f"game_{game['gamePk']}"
+                    ):
                         st.session_state.selected_game_pk = game["gamePk"]
                         st.session_state.mode = "Game Feed"
                         st.rerun()
@@ -122,10 +125,11 @@ if mode == "Schedule":
         else:
             st.warning("No games found")
 
+
 # =========================
-# MODE 2 — GAME FEED
+# MODE 2 — GAME FEED (UNCHANGED LOGIC)
 # =========================
-if mode == "Game Feed":
+if st.session_state.mode == "Game Feed":
 
     default_game = st.session_state.selected_game_pk or "823878"
     game_pk = st.text_input("Enter Game ID", str(default_game))
@@ -161,7 +165,7 @@ if mode == "Game Feed":
         END_DT = datetime.combine(end_date, end_time).replace(tzinfo=ZoneInfo("America/New_York"))
 
     # =========================
-    # AUTO LOAD IF SELECTED
+    # AUTO LOAD TRIGGER
     # =========================
     auto_load = False
 
@@ -180,9 +184,6 @@ if mode == "Game Feed":
 
         at_bats = []
 
-        # =========================
-        # BUILD PLAY DATA
-        # =========================
         for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
 
             start_time = convert_to_et_str(play.get("about", {}).get("startTime"))
@@ -220,32 +221,6 @@ if mode == "Game Feed":
                 "pitches": pitches
             })
 
-        # =========================
-        # AUTO-DEFAULT TIME RANGE
-        # =========================
-        if USE_TIME_FILTER and at_bats:
-
-            play_times = []
-
-            for ab in at_bats:
-                raw_time = ab.get("startTime")
-                dt = convert_to_et(raw_time)
-                if dt:
-                    play_times.append(dt)
-
-            if play_times:
-                game_start = min(play_times)
-                game_end = max(play_times)
-
-                st.session_state.start_date = game_start.date()
-                st.session_state.start_time = game_start.time()
-
-                st.session_state.end_date = game_end.date()
-                st.session_state.end_time = game_end.time()
-
-        # =========================
-        # FILTER
-        # =========================
         def inning_filter(ab):
             inning = ab.get("inning")
 
@@ -276,9 +251,6 @@ if mode == "Game Feed":
 
             filtered_at_bats.append(ab)
 
-        # =========================
-        # OUTPUT
-        # =========================
         prev_score = None
 
         for ab in filtered_at_bats:
