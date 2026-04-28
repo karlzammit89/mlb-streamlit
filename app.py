@@ -194,9 +194,9 @@ if st.session_state.selected_game_pk:
         st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
         st.write(f"📌 {ab['result']} - {ab['desc']}")
 
-        st.write(f"🕒 Start: {format_full_et(ab['start_dt'])}")
-        st.write(f"🕒 End: {format_full_et(ab['end_dt'])}")
+        st.write(f"🕒 At Bat Start: {format_full_et(ab['start_dt'])}")
         st.success(f"🕒 Last Pitch: {format_full_et(ab['last_pitch_dt'])}")
+        st.write(f"🕒 At Bat End: {format_full_et(ab['end_dt'])}")
 
         st.divider()
 
