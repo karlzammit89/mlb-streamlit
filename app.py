@@ -98,12 +98,32 @@ if st.session_state.selected_game_pk:
     # =========================
     # HEADER (UPDATED)
     # =========================
+# =========================
+# TEAM LOGOS
+# =========================
+away_logo = data.get("gameData", {}).get("teams", {}).get("away", {}).get("id")
+home_logo = data.get("gameData", {}).get("teams", {}).get("home", {}).get("id")
+
+away_logo_url = f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{away_logo}.svg"
+home_logo_url = f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{home_logo}.svg"
+
+# =========================
+# CLEAN SCORE HEADER (NO GAME STATE)
+# =========================
+c1, c2, c3 = st.columns([1, 4, 1])
+
+with c1:
+    st.image(away_logo_url, width=60)
+
+with c2:
     st.markdown(
         f"""
-        ## ⚾ {away_team} {away_score} - {home_score} {home_team}
-        🟢 {game_status}
+        # ⚾ {away_team} {away_score} - {home_score} {home_team}
         """
     )
+
+with c3:
+    st.image(home_logo_url, width=60)
 
     # =========================
     # FILTERS
