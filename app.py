@@ -129,15 +129,20 @@ if st.session_state.selected_game_pk:
     away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
 
     # =========================
-    # HEADER (ABBREVIATED FIXED)
+    # HEADER (TIGHT LOGO SPACING FIX)
     # =========================
     away_abbr = get_team_abbrev(away_id, away_team)
     home_abbr = get_team_abbrev(home_id, home_team)
 
-    c1, c2, c3 = st.columns([1, 6, 1])
+    c1, c2, c3 = st.columns([0.6, 8.8, 0.6])
 
     with c1:
-        st.image(away_logo, width=60)
+        st.markdown(
+            "<div style='display:flex;justify-content:flex-end;'>",
+            unsafe_allow_html=True
+        )
+        st.image(away_logo, width=55)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with c2:
         st.markdown(
@@ -163,7 +168,12 @@ if st.session_state.selected_game_pk:
         )
 
     with c3:
-        st.image(home_logo, width=60)
+        st.markdown(
+            "<div style='display:flex;justify-content:flex-start;'>",
+            unsafe_allow_html=True
+        )
+        st.image(home_logo, width=55)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # =========================
     # FILTERS
@@ -182,7 +192,6 @@ if st.session_state.selected_game_pk:
         end_dt = convert_to_et(play.get("about", {}).get("endTime"))
 
         last_pitch_dt = None
-
         for event in play.get("playEvents", []):
             if event.get("isPitch"):
                 last_pitch_dt = convert_to_et(event.get("startTime"))
@@ -197,19 +206,14 @@ if st.session_state.selected_game_pk:
             "desc": play.get("result", {}).get("description"),
             "away_score": play.get("result", {}).get("awayScore"),
             "home_score": play.get("result", {}).get("homeScore"),
-
             "inning_raw": raw_inning,
             "inning_group": "Extra Innings" if raw_inning >= 10 else raw_inning,
-
             "half_inning": play.get("about", {}).get("halfInning"),
             "start_dt": start_dt,
             "end_dt": end_dt,
             "last_pitch_dt": last_pitch_dt,
         })
 
-    # =========================
-    # INNING FILTER UI
-    # =========================
     all_innings = sorted(
         {ab["inning_group"] for ab in at_bats if ab["inning_group"] is not None},
         key=lambda x: (x == "Extra Innings", x if isinstance(x, int) else 999)
@@ -224,9 +228,6 @@ if st.session_state.selected_game_pk:
             default=[]
         )
 
-    # =========================
-    # FILTER LOGIC
-    # =========================
     run_filters = st.button("🚀 Apply Filters")
 
     def inning_match(ab):
@@ -251,9 +252,6 @@ if st.session_state.selected_game_pk:
             if inning_match(ab) and time_match(ab)
         ]
 
-    # =========================
-    # OUTPUT
-    # =========================
     prev_score = None
 
     for ab in filtered:
@@ -272,7 +270,6 @@ if st.session_state.selected_game_pk:
 
         st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
         st.write(f"📌 {ab['result']} - {ab['desc']}")
-
         st.write(f"🕒 At Bat Start: {format_full_et(ab['start_dt'])}")
         st.success(f"🕒 Last Pitch: {format_full_et(ab['last_pitch_dt'])}")
         st.write(f"🕒 At Bat End: {format_full_et(ab['end_dt'])}")
@@ -281,9 +278,6 @@ if st.session_state.selected_game_pk:
 
         prev_score = score
 
-# =========================
-# SCHEDULE VIEW
-# =========================
 else:
 
     date = st.date_input("Select date", datetime.today())
