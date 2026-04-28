@@ -364,18 +364,18 @@ if st.session_state.selected_game_pk:
         # Timestamps
         col_t1, col_t2, col_t3 = st.columns(3)
         with col_t1:
-            st.markdown(f"🕐 *At Bat Start*  \n`{format_full_et(ab['start_dt']) or 'N/A'}`")
+            st.markdown(f"🕐 **At Bat Start**  \n`{format_full_et(ab['start_dt']) or 'N/A'}`")
         with col_t2:
             st.markdown(f"⚡ **Last Pitch**  \n`{format_full_et(ab['last_pitch_dt']) or 'N/A'}`")
         with col_t3:
-            st.markdown(f"🕔 *At Bat End*  \n`{format_full_et(ab['end_dt']) or 'N/A'}`")
+            st.markdown(f"🕔 **At Bat End**  \n`{format_full_et(ab['end_dt']) or 'N/A'}`")
 
         # Pitch-by-pitch
         if ab["pitches"]:
             with st.expander(f"🎯 Pitch-by-Pitch — {len(ab['pitches'])} pitches"):
                 for p in ab["pitches"]:
                     p_emoji = get_pitch_emoji(p["call"])
-                    speed_str = f"  🏎️ {p['speed_mph']:.1f} mph" if p["speed_mph"] else ""
+                    speed_str = f"  🗲 {p['speed_mph']:.1f} mph" if p["speed_mph"] else ""
                     count_str = f"⚖️ Count: **{p['balls']}-{p['strikes']}**"
                     time_str = f"🕒 {format_full_et(p['start_time'])}" if p["start_time"] else ""
                     st.markdown(
