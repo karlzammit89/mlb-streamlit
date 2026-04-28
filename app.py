@@ -91,9 +91,9 @@ if st.session_state.selected_game_pk:
     away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
 
     # =========================
-    # HEADER (UPDATED)
+    # HEADER (FIT FIXED)
     # =========================
-    c1, c2, c3 = st.columns([1, 4, 1])
+    c1, c2, c3 = st.columns([1, 6, 1])
 
     with c1:
         st.image(away_logo, width=60)
@@ -103,22 +103,28 @@ if st.session_state.selected_game_pk:
             f"""
             <div style="
                 display: flex;
+                flex-direction: column;
                 align-items: center;
                 justify-content: center;
                 text-align: center;
                 font-weight: 700;
                 width: 100%;
+                gap: 2px;
             ">
-                <span style="
-                    font-size: clamp(12px, 2.2vw, 26px);
+                <div style="
+                    font-size: clamp(14px, 2.4vw, 26px);
                     line-height: 1.2;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    max-width: 100%;
+                    display: flex;
+                    flex-wrap: wrap;
+                    justify-content: center;
+                    gap: 8px;
                 ">
-                    {away_team} {away_score} - {home_score} {home_team}
-                </span>
+                    <span>{away_team}</span>
+                    <span style="color: #888;">{away_score}</span>
+                    <span>-</span>
+                    <span style="color: #888;">{home_score}</span>
+                    <span>{home_team}</span>
+                </div>
             </div>
             """,
             unsafe_allow_html=True
@@ -127,6 +133,7 @@ if st.session_state.selected_game_pk:
     with c3:
         st.image(home_logo, width=60)
 
+    
     # =========================
     # FILTERS
     # =========================
