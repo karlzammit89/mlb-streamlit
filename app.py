@@ -9,19 +9,23 @@ from zoneinfo import ZoneInfo
 st.title("⚾ MLB Dashboard")
 
 # =========================
-# Monday-first calendar via CSS injection
+# Monday-first calendar via JS locale override
+# Streamlit reads first-day-of-week from the browser locale.
+# en-GB uses Monday as the first day, so we spoof the locale
+# by overriding Intl.DateTimeFormat to always report en-GB.
 # =========================
-st.markdown("""
-<style>
-/* Shift Streamlit's date picker to start on Monday */
-[data-testid="stDateInput"] table thead tr th:first-child {
-    display: none;
-}
-[data-testid="stDateInput"] table tbody tr td:first-child {
-    display: none;
-}
-</style>
-""", unsafe_allow_html=True)
+st.components.v1.html("""
+<script>
+(function() {
+    const origDateTimeFormat = Intl.DateTimeFormat;
+    function PatchedDateTimeFormat(locale, options) {
+        return new origDateTimeFormat('en-GB', options);
+    }
+    PatchedDateTimeFormat.supportedLocalesOf = origDateTimeFormat.supportedLocalesOf.bind(origDateTimeFormat);
+    Intl.DateTimeFormat = PatchedDateTimeFormat;
+})();
+</script>
+""", height=0)
 
 # =========================
 # STATE
@@ -399,41 +403,26 @@ else:
     # Schedule card CSS
     st.markdown("""
     <style>
-    .schedule-card {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-    }
-    .team-logo-col {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        flex-shrink: 0;
-    }
-    .team-logo-col img {
-        width: 24px;
-        height: 24px;
-    }
-    .game-info {
-        flex: 1;
-        min-width: 0;
-        font-size: 13px;
-        line-height: 1.4;
-    }
     .matchup {
         font-weight: 700;
-        font-size: 14px;
+        font-size: 17px;
+        line-height: 1.3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 3px;
+    }
+    .game-meta {
+        color: #aaa;
+        font-size: 13px;
+        line-height: 1.4;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    .game-meta {
-        color: #888;
-        font-size: 11px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    /* Stretch container vertically so logos align with text */
+    [data-testid="stHorizontalBlock"] [data-testid="stVerticalBlock"] {
+        justify-content: center;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -456,11 +445,11 @@ else:
                 meta_line = f"🕒 {time_str} · {status}"
 
             with st.container(border=True):
-                c1, c2, c3 = st.columns([1, 4, 1])
+                c1, c2, c3 = st.columns([1, 5, 1])
 
                 with c1:
-                    st.image(game["away_logo"], width=24)
-                    st.image(game["home_logo"], width=24)
+                    st.image(game["away_logo"], width=28)
+                    st.image(game["home_logo"], width=28)
 
                 with c2:
                     st.markdown(
