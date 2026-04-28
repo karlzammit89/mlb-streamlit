@@ -123,7 +123,7 @@ if st.session_state.selected_game_pk:
             "away_score": play.get("result", {}).get("awayScore"),
             "home_score": play.get("result", {}).get("homeScore"),
 
-            # ✅ CHANGE ONLY: keep both raw + grouped inning
+            # keep both
             "inning_raw": raw_inning,
             "inning_group": "Extra Innings" if raw_inning >= 10 else raw_inning,
 
@@ -186,9 +186,9 @@ if st.session_state.selected_game_pk:
 
         emoji = get_result_emoji(ab["result"], ab["desc"])
 
-        # ✅ CHANGE ONLY: use raw inning for display
         inning_label = f"{ab['inning_raw']} ({ab['half_inning']})"
 
+        # ✅ RESTORED TITLE
         st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
         score = f"{ab['away_score']} - {ab['home_score']}"
