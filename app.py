@@ -80,7 +80,16 @@ if st.session_state.selected_game_pk:
         st.session_state.selected_game_pk = None
         st.rerun()
 
-    st.markdown(f"## 🎮 Game Feed: {game_pk}")
+    # =========================
+    # LOAD GAME FEED FIRST (needed for team names)
+    # =========================
+    url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
+    data = requests.get(url).json()
+
+    home_team = data.get("gameData", {}).get("teams", {}).get("home", {}).get("name", "Home")
+    away_team = data.get("gameData", {}).get("teams", {}).get("away", {}).get("name", "Away")
+
+    st.markdown(f"## 🎮 {away_team} @ {home_team}")
 
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
     TARGET_INNINGS = []
@@ -113,11 +122,8 @@ if st.session_state.selected_game_pk:
         END_DT = datetime.combine(end_date, end_time).replace(tzinfo=ZoneInfo("America/New_York"))
 
     # =========================
-    # LOAD GAME FEED
+    # BUILD PLAY DATA
     # =========================
-    url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
-    data = requests.get(url).json()
-
     at_bats = []
 
     for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
@@ -157,6 +163,9 @@ if st.session_state.selected_game_pk:
             "pitches": pitches
         })
 
+    # =========================
+    # OUTPUT
+    # =========================
     prev_score = None
 
     for ab in at_bats:
@@ -188,7 +197,7 @@ if st.session_state.selected_game_pk:
 
 
 # =========================
-# SCHEDULE VIEW (AUTO LOAD)
+# SCHEDULE VIEW
 # =========================
 else:
 
