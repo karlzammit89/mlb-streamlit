@@ -9,23 +9,24 @@ from zoneinfo import ZoneInfo
 st.title("⚾ MLB Dashboard")
 
 # =========================
-# SESSION STATE INIT
+# MODE CONTROL (FIXED - IMPORTANT)
 # =========================
 if "mode" not in st.session_state:
     st.session_state.mode = "Schedule"
 
+selected_mode = st.radio(
+    "Select Mode",
+    ["Schedule", "Game Feed"],
+    index=0 if st.session_state.mode == "Schedule" else 1
+)
+
+st.session_state.mode = selected_mode
+
+# =========================
+# SELECTED GAME STATE
+# =========================
 if "selected_game_pk" not in st.session_state:
     st.session_state.selected_game_pk = None
-
-# =========================
-# MODE (STATE DRIVEN FIX)
-# =========================
-mode = st.session_state.mode
-
-st.radio("Select Mode", ["Schedule", "Game Feed"], key="ui_mode")
-
-# sync UI → state (so radio still works manually)
-st.session_state.mode = st.session_state.ui_mode
 
 
 # =========================
@@ -80,7 +81,7 @@ def get_result_emoji(result_event: str, desc: str = ""):
 
 
 # =========================
-# MODE 1 — SCHEDULE (FIXED CLICK NAVIGATION)
+# MODE 1 — SCHEDULE
 # =========================
 if st.session_state.mode == "Schedule":
 
@@ -127,7 +128,7 @@ if st.session_state.mode == "Schedule":
 
 
 # =========================
-# MODE 2 — GAME FEED (UNCHANGED LOGIC)
+# MODE 2 — GAME FEED
 # =========================
 if st.session_state.mode == "Game Feed":
 
