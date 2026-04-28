@@ -69,7 +69,7 @@ def get_result_emoji(result_event: str, desc: str = ""):
 
 
 # =========================
-# GAME FEED VIEW
+# GAME VIEW
 # =========================
 if st.session_state.selected_game_pk:
 
@@ -79,9 +79,6 @@ if st.session_state.selected_game_pk:
         st.session_state.selected_game_pk = None
         st.rerun()
 
-    # =========================
-    # LOAD GAME FEED
-    # =========================
     url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
     data = requests.get(url).json()
 
@@ -91,10 +88,10 @@ if st.session_state.selected_game_pk:
     st.markdown(f"## ⚾ {away_team} @ {home_team}")
 
     # =========================
-    # BUILD FILTER UI
+    # FILTERS
     # =========================
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
-    USE_TIME_FILTER = st.checkbox("Filter by Actual Time (ET)", value=False)
+    USE_TIME_FILTER = st.checkbox("🕒 Filter by actual time (ET)", value=False)
 
     TARGET_INNINGS = []
     START_DT = None
@@ -107,19 +104,31 @@ if st.session_state.selected_game_pk:
             default=[1]
         )
 
+    # =========================
+    # UPDATED TIME FILTER (CLEAN UI)
+    # =========================
     if USE_TIME_FILTER:
+
+        st.markdown("🕒 **Filter by actual time (ET)**")
+
         col1, col2 = st.columns(2)
 
         with col1:
-            start_date = st.date_input("Start Date", datetime.today(), key="start_date")
-            start_time = st.time_input("Start Time", datetime.now().time(), key="start_time")
+            start_dt = st.datetime_input(
+                "Start (ET)",
+                value=datetime.now(),
+                key="start_dt"
+            )
 
         with col2:
-            end_date = st.date_input("End Date", datetime.today(), key="end_date")
-            end_time = st.time_input("End Time", datetime.now().time(), key="end_time")
+            end_dt = st.datetime_input(
+                "End (ET)",
+                value=datetime.now(),
+                key="end_dt"
+            )
 
-        START_DT = datetime.combine(start_date, start_time).replace(tzinfo=ZoneInfo("America/New_York"))
-        END_DT = datetime.combine(end_date, end_time).replace(tzinfo=ZoneInfo("America/New_York"))
+        START_DT = start_dt.replace(tzinfo=ZoneInfo("America/New_York"))
+        END_DT = end_dt.replace(tzinfo=ZoneInfo("America/New_York"))
 
     # =========================
     # LOAD PLAYS
@@ -164,9 +173,9 @@ if st.session_state.selected_game_pk:
         })
 
     # =========================
-    # RUN FILTER BUTTON
+    # FILTERS APPLY
     # =========================
-    run_filters = st.button("🚀 Apply Filters")
+    run_filters = st.button("🚀 Run Filters")
 
     filtered_at_bats = at_bats
 
@@ -241,7 +250,7 @@ if st.session_state.selected_game_pk:
 
 
 # =========================
-# SCHEDULE VIEW (FINAL UPGRADE)
+# SCHEDULE VIEW (UNCHANGED FROM YOUR LATEST VERSION)
 # =========================
 else:
 
@@ -284,25 +293,18 @@ else:
         st.warning("No games found for this date")
         st.stop()
 
-    # =========================
-    # 2-COLUMN GRID
-    # =========================
     cols = st.columns(2)
 
     for i, game in enumerate(games):
 
         with cols[i % 2]:
 
-            # 24-hour time format
             time_str = game["time"].strftime("%H:%M") if game["time"] else "TBD"
 
-            status = game["status"]
-
-            # show score only if game is NOT scheduled
-            if status.lower() == "scheduled":
-                status_line = f"🏷️ {status}"
+            if game["status"].lower() == "scheduled":
+                status_line = f"🏷️ {game['status']}"
             else:
-                status_line = f"🏷️ {status} | 📊 {game['away_score']} - {game['home_score']}"
+                status_line = f"🏷️ {game['status']} | 📊 {game['away_score']} - {game['home_score']}"
 
             with st.container(border=True):
 
