@@ -15,7 +15,7 @@ if "selected_game_pk" not in st.session_state:
     st.session_state.selected_game_pk = None
 
 # =========================
-# TIME HELPERS (ET)
+# TIME HELPERS
 # =========================
 ET = ZoneInfo("America/New_York")
 
@@ -84,7 +84,7 @@ if st.session_state.selected_game_pk:
             if event.get("isPitch"):
                 last_pitch_dt = convert_to_et(event.get("startTime"))
 
-        raw_inning = play.get("about", {}).get("inning")
+        inning = play.get("about", {}).get("inning")
 
         at_bats.append({
             "atBatIndex": play.get("atBatIndex"),
@@ -94,7 +94,7 @@ if st.session_state.selected_game_pk:
             "desc": play.get("result", {}).get("description"),
             "away_score": play.get("result", {}).get("awayScore"),
             "home_score": play.get("result", {}).get("homeScore"),
-            "inning": raw_inning,   # ✅ KEEP REAL INNING NUMBER (IMPORTANT FIX)
+            "inning": inning,  # ✅ KEEP REAL VALUE
             "half_inning": play.get("about", {}).get("halfInning"),
             "start_dt": start_dt,
             "end_dt": end_dt,
@@ -102,14 +102,21 @@ if st.session_state.selected_game_pk:
         })
 
     # =========================
-    # FILTER UI
+    # FILTERS
     # =========================
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
+    USE_TIME_FILTER = st.checkbox("Filter by actual time (ET)", value=False)
 
-    def inning_group_label(inning):
-        if inning is None:
+    START_DT = None
+    END_DT = None
+
+    # =========================
+    # INNING GROUPING (UI ONLY)
+    # =========================
+    def inning_group_label(i):
+        if i is None:
             return None
-        return "Extra Innings" if inning >= 10 else str(inning)
+        return "Extra Innings" if i >= 10 else str(i)
 
     all_innings = sorted(
         {inning_group_label(ab["inning"]) for ab in at_bats if ab["inning"] is not None},
@@ -137,12 +144,22 @@ if st.session_state.selected_game_pk:
         label = "Extra Innings" if ab["inning"] >= 10 else str(ab["inning"])
         return label in selected_innings
 
+    def time_match(ab):
+        if not USE_TIME_FILTER:
+            return True
+        if not ab["start_dt"]:
+            return False
+        return START_DT <= ab["start_dt"] <= END_DT
+
     run_filters = st.button("🚀 Apply Filters")
 
     filtered = at_bats
 
     if run_filters:
-        filtered = [ab for ab in at_bats if inning_match(ab)]
+        filtered = [
+            ab for ab in at_bats
+            if inning_match(ab) and time_match(ab)
+        ]
 
     # =========================
     # OUTPUT
@@ -152,7 +169,7 @@ if st.session_state.selected_game_pk:
     for ab in filtered:
 
         emoji = get_result_emoji(ab["result"], ab["desc"])
-        inning_label = f"{ab['inning']} ({ab['half_inning']})"  # ✅ REAL INNING ALWAYS SHOWN
+        inning_label = f"{ab['inning']} ({ab['half_inning']})"  # ✅ ALWAYS REAL VALUE
 
         st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
