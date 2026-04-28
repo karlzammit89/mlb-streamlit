@@ -241,41 +241,68 @@ if st.session_state.selected_game_pk:
 
 
 # =========================
-# SCHEDULE VIEW
+# SCHEDULE VIEW (IMPROVED)
 # =========================
 else:
 
     date = st.date_input("Select date", datetime.today())
     date_str = date.strftime("%Y-%m-%d")
 
-    st.markdown(f"### 📅 Games for {date_str}")
+    st.markdown(f"## 📅 MLB Schedule — {date_str}")
 
     url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_str}"
     data = requests.get(url).json()
 
-    games = [
-        {
-            "gamePk": g["gamePk"],
-            "matchup": f'{g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}',
-            "time": convert_to_et(g.get("gameDate"))
-        }
-        for d in data.get("dates", [])
-        for g in d.get("games", [])
-    ]
+    games = []
+
+    for d in data.get("dates", []):
+        for g in d.get("games", []):
+
+            away = g["teams"]["away"]["team"]
+            home = g["teams"]["home"]["team"]
+
+            games.append({
+                "gamePk": g["gamePk"],
+                "away_name": away["name"],
+                "home_name": home["name"],
+                "away_logo": f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{away['id']}.svg",
+                "home_logo": f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{home['id']}.svg",
+                "time": convert_to_et(g.get("gameDate")),
+                "status": g.get("status", {}).get("detailedState", "Scheduled")
+            })
 
     st.session_state.games = games
 
-    if games:
-        for game in games:
-            game_time = game["time"]
-            time_str = game_time.strftime("%H:%M ET") if game_time else "TBD"
-
-            if st.button(
-                f"⚾ {game['matchup']} | 🕒 {time_str} | ID: {game['gamePk']}",
-                key=f"game_{game['gamePk']}"
-            ):
-                st.session_state.selected_game_pk = game["gamePk"]
-                st.rerun()
-
-    else:
+    if not games:
         st.warning("No games found for this date")
+        st.stop()
+
+    # =========================
+    # DISPLAY AS CARDS
+    # =========================
+    for game in games:
+
+        time_str = game["time"].strftime("%I:%M %p ET") if game["time"] else "TBD"
+        status = game["status"]
+
+        with st.container(border=True):
+
+            col1, col2, col3 = st.columns([1, 2, 1])
+
+            with col1:
+                st.image(game["away_logo"], width=60)
+                st.image(game["home_logo"], width=60)
+
+            with col2:
+                st.markdown(f"""
+                ### ⚾ {game['away_name']} @ {game['home_name']}
+                🕒 **{time_str}**  
+                🏷️ `{status}`
+                """)
+
+            with col3:
+                if st.button("▶ Watch", key=f"game_{game['gamePk']}"):
+                    st.session_state.selected_game_pk = game["gamePk"]
+                    st.rerun()
+
+            st.markdown("---")
