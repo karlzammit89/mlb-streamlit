@@ -114,23 +114,23 @@ if mode == "Game Feed":
 
     USE_TIME_FILTER = st.checkbox("Filter by Actual Time (ET)", value=False)
 
-    et_now = datetime.now(ZoneInfo("America/New_York"))
-
-    today_start = et_now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end = et_now.replace(hour=23, minute=59, second=0, microsecond=0)
-
-    if "start_time" not in st.session_state:
-        st.session_state.start_time = today_start.strftime("%Y-%m-%d %H:%M")
-
-    if "end_time" not in st.session_state:
-        st.session_state.end_time = today_end.strftime("%Y-%m-%d %H:%M")
-
-    START_TIME = None
-    END_TIME = None
+    START_DT = None
+    END_DT = None
 
     if USE_TIME_FILTER:
-        START_TIME = st.text_input("Start Time (YYYY-MM-DD HH:MM)", st.session_state.start_time)
-        END_TIME = st.text_input("End Time (YYYY-MM-DD HH:MM)", st.session_state.end_time)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            start_date = st.date_input("Start Date", datetime.today(), key="start_date")
+            start_time = st.time_input("Start Time", datetime.now().time(), key="start_time")
+
+        with col2:
+            end_date = st.date_input("End Date", datetime.today(), key="end_date")
+            end_time = st.time_input("End Time", datetime.now().time(), key="end_time")
+
+        START_DT = datetime.combine(start_date, start_time).replace(tzinfo=ZoneInfo("America/New_York"))
+        END_DT = datetime.combine(end_date, end_time).replace(tzinfo=ZoneInfo("America/New_York"))
 
     # =========================
     # LOAD GAME
@@ -141,13 +141,6 @@ if mode == "Game Feed":
         data = requests.get(url).json()
 
         at_bats = []
-
-        START_DT = None
-        END_DT = None
-
-        if USE_TIME_FILTER and START_TIME and END_TIME:
-            START_DT = datetime.fromisoformat(START_TIME).replace(tzinfo=ZoneInfo("America/New_York"))
-            END_DT = datetime.fromisoformat(END_TIME).replace(tzinfo=ZoneInfo("America/New_York"))
 
         # =========================
         # BUILD PLAY DATA
@@ -190,6 +183,29 @@ if mode == "Game Feed":
             })
 
         # =========================
+        # AUTO-DEFAULT TIME RANGE
+        # =========================
+        if USE_TIME_FILTER and at_bats:
+
+            play_times = []
+
+            for ab in at_bats:
+                raw_time = ab.get("startTime")
+                dt = convert_to_et(raw_time)
+                if dt:
+                    play_times.append(dt)
+
+            if play_times:
+                game_start = min(play_times)
+                game_end = max(play_times)
+
+                st.session_state.start_date = game_start.date()
+                st.session_state.start_time = game_start.time()
+
+                st.session_state.end_date = game_end.date()
+                st.session_state.end_time = game_end.time()
+
+        # =========================
         # FILTER
         # =========================
         def inning_filter(ab):
@@ -210,8 +226,10 @@ if mode == "Game Feed":
 
         for ab in at_bats:
 
-            if USE_TIME_FILTER and ab["startTime"] and START_DT and END_DT:
-                ab_dt = convert_to_et(ab["startTime"])
+            if USE_TIME_FILTER and START_DT and END_DT:
+                raw_time = ab.get("startTime")
+                ab_dt = convert_to_et(raw_time)
+
                 if not ab_dt or not (START_DT <= ab_dt <= END_DT):
                     continue
 
