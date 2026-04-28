@@ -17,12 +17,14 @@ if "selected_game_pk" not in st.session_state:
 if "games" not in st.session_state:
     st.session_state.games = []
 
-ET = ZoneInfo("America/New_York")
-
 # =========================
 # TIME HELPERS (FIXED)
 # =========================
+ET = ZoneInfo("America/New_York")
+
+
 def convert_to_et(raw_time):
+    """Correct UTC -> ET conversion (NO manual string hacks)."""
     if not raw_time:
         return None
     try:
@@ -89,6 +91,9 @@ if st.session_state.selected_game_pk:
 
     st.markdown(f"## ⚾ {away_team} @ {home_team}")
 
+    # =========================
+    # FILTERS
+    # =========================
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
     USE_TIME_FILTER = st.checkbox("🕒 Filter by actual time (ET)", value=False)
 
@@ -128,25 +133,19 @@ if st.session_state.selected_game_pk:
         })
 
     # =========================
-    # TEXT TIME FILTER (NEW)
+    # SMART TIME FILTER (FIXED)
     # =========================
     if USE_TIME_FILTER:
 
         st.markdown("🕒 **Filter by actual time (ET)**")
 
-        def parse_et(text):
-            try:
-                return datetime.strptime(text, "%Y-%m-%d %H:%M").replace(tzinfo=ET)
-            except:
-                return None
-
         play_times = [ab["start_dt"] for ab in at_bats if ab["start_dt"]]
 
         if play_times:
-            default_start = min(play_times).strftime("%Y-%m-%d %H:%M")
-            default_end = max(play_times).strftime("%Y-%m-%d %H:%M")
+            default_start = min(play_times)
+            default_end = max(play_times)
         else:
-            now = datetime.now(ET).strftime("%Y-%m-%d %H:%M")
+            now = datetime.now(ET)
             default_start = now
             default_end = now
 
@@ -154,34 +153,29 @@ if st.session_state.selected_game_pk:
             st.session_state.time_filter_initialized = False
 
         if not st.session_state.time_filter_initialized:
-            st.session_state.start_text = default_start
-            st.session_state.end_text = default_end
+            st.session_state.start_dt = default_start
+            st.session_state.end_dt = default_end
             st.session_state.time_filter_initialized = True
 
         col1, col2 = st.columns(2)
 
         with col1:
-            st.session_state.start_text = st.text_input(
-                "Start (ET) — YYYY-MM-DD HH:MM",
-                value=st.session_state.start_text
+            st.session_state.start_dt = st.datetime_input(
+                "Start (ET)",
+                value=st.session_state.start_dt
             )
 
         with col2:
-            st.session_state.end_text = st.text_input(
-                "End (ET) — YYYY-MM-DD HH:MM",
-                value=st.session_state.end_text
+            st.session_state.end_dt = st.datetime_input(
+                "End (ET)",
+                value=st.session_state.end_dt
             )
 
-        START_DT = parse_et(st.session_state.start_text)
-        END_DT = parse_et(st.session_state.end_text)
-
-        if not START_DT:
-            START_DT = min(play_times) if play_times else datetime.now(ET)
-        if not END_DT:
-            END_DT = max(play_times) if play_times else datetime.now(ET)
+        START_DT = st.session_state.start_dt.replace(tzinfo=ET)
+        END_DT = st.session_state.end_dt.replace(tzinfo=ET)
 
     # =========================
-    # FILTERS
+    # FILTER APPLY
     # =========================
     run_filters = st.button("🚀 Run Filters")
 
@@ -235,7 +229,7 @@ if st.session_state.selected_game_pk:
 
 
 # =========================
-# SCHEDULE VIEW
+# SCHEDULE VIEW (FIXED TIME)
 # =========================
 else:
 
