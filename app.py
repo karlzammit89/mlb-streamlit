@@ -364,7 +364,7 @@ if st.session_state.selected_game_pk:
 
         if USE_INNING_FILTER:
             inning_labels = [str(i) for i in selected_innings] if selected_innings else ["none selected"]
-            st.info(f"🏟️ **Inning filter:** Innings {', '.join(inning_labels)} — showing **{showing}** of **{total}** at-bats")
+            st.info(f"🏟️ **Inning filter:** Inning(s) {', '.join(inning_labels)} — showing **{showing}** of **{total}** at-bats")
 
         if USE_TIME_FILTER:
             st.info(f"🕐 **Time filter:** {START_DT.strftime('%H:%M')} → {END_DT.strftime('%H:%M')} ET — showing **{showing}** of **{total}** at-bats")
