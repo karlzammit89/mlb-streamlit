@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from datetime import datetime
+from datetime import datetime, time as dtime
 from zoneinfo import ZoneInfo
 
 # =========================
@@ -10,9 +10,6 @@ st.title("⚾ MLB Dashboard")
 
 # =========================
 # Monday-first calendar via JS locale override
-# Streamlit reads first-day-of-week from the browser locale.
-# en-GB uses Monday as the first day, so we spoof the locale
-# by overriding Intl.DateTimeFormat to always report en-GB.
 # =========================
 st.components.v1.html("""
 <script>
@@ -142,7 +139,7 @@ if st.session_state.selected_game_pk:
 
     game_pk = st.session_state.selected_game_pk
 
-    if st.button("⬅ Back to Schedule"):
+    if st.button("Back to Schedule"):
         st.session_state.selected_game_pk = None
         st.rerun()
 
@@ -151,7 +148,6 @@ if st.session_state.selected_game_pk:
 
     home_team = data.get("gameData", {}).get("teams", {}).get("home", {}).get("name", "Home")
     away_team = data.get("gameData", {}).get("teams", {}).get("away", {}).get("name", "Away")
-
     home_id = data.get("gameData", {}).get("teams", {}).get("home", {}).get("id")
     away_id = data.get("gameData", {}).get("teams", {}).get("away", {}).get("id")
 
@@ -165,14 +161,10 @@ if st.session_state.selected_game_pk:
     away_abbr = get_team_abbrev(away_id, away_team)
     home_abbr = get_team_abbrev(home_id, home_team)
 
-    # =========================
     # HEADER
-    # =========================
     c1, c2, c3 = st.columns([1, 6, 1])
-
     with c1:
         st.image(away_logo, width=60)
-
     with c2:
         st.markdown(
             f"""
@@ -195,29 +187,19 @@ if st.session_state.selected_game_pk:
             """,
             unsafe_allow_html=True
         )
-
     with c3:
         st.image(home_logo, width=60)
 
     # =========================
-    # FILTERS
+    # BUILD AT-BATS
     # =========================
-    USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
-    USE_TIME_FILTER = st.checkbox("Filter by actual time (ET)", value=False)
-
-    START_DT = None
-    END_DT = None
-
     at_bats = []
 
     for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
 
         start_dt = convert_to_et(play.get("about", {}).get("startTime"))
         end_dt = convert_to_et(play.get("about", {}).get("endTime"))
-
         last_pitch_dt = None
-
-        # ---- Pitch-by-pitch data ----
         pitches = []
         pitch_num = 0
         balls = 0
@@ -230,9 +212,6 @@ if st.session_state.selected_game_pk:
                 pitch_type = event.get("pitchData", {}).get("startSpeed")
                 pitch_name = details.get("type", {}).get("description", "Unknown")
                 call_desc = details.get("description", "")
-                call_code = details.get("call", {}).get("code", "")
-
-                # Update count
                 count = event.get("count", {})
                 b = count.get("balls", balls)
                 s = count.get("strikes", strikes)
@@ -246,7 +225,6 @@ if st.session_state.selected_game_pk:
                     "strikes": s,
                     "start_time": convert_to_et(event.get("startTime")),
                 })
-
                 last_pitch_dt = convert_to_et(event.get("startTime"))
 
         raw_inning = play.get("about", {}).get("inning")
@@ -269,13 +247,34 @@ if st.session_state.selected_game_pk:
         })
 
     # =========================
+    # DERIVE GAME TIME BOUNDS FOR FILTER DEFAULTS
+    # =========================
+    game_start_raw = data.get("gameData", {}).get("datetime", {}).get("dateTime")
+    game_start_default = convert_to_et(game_start_raw)
+
+    all_end_dts = [ab["end_dt"] for ab in at_bats if ab["end_dt"]]
+    game_end_default = max(all_end_dts) if all_end_dts else None
+
+    if not game_start_default:
+        all_start_dts = [ab["start_dt"] for ab in at_bats if ab["start_dt"]]
+        game_start_default = min(all_start_dts) if all_start_dts else None
+
+    # =========================
+    # FILTER CHECKBOXES
+    # =========================
+    USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
+    USE_TIME_FILTER = st.checkbox("Filter by actual time (ET)", value=False)
+
+    START_DT = None
+    END_DT = None
+
+    # =========================
     # INNING FILTER UI
     # =========================
     all_innings = sorted(
         {ab["inning_group"] for ab in at_bats if ab["inning_group"] is not None},
         key=lambda x: (x == "Extra Innings", x if isinstance(x, int) else 999)
     )
-
     selected_innings = []
 
     if USE_INNING_FILTER:
@@ -286,9 +285,34 @@ if st.session_state.selected_game_pk:
         )
 
     # =========================
-    # FILTER LOGIC
+    # TIME FILTER UI
     # =========================
-    run_filters = st.button("🚀 Apply Filters")
+    if USE_TIME_FILTER:
+        default_start_time = game_start_default.time() if game_start_default else dtime(12, 0)
+        default_end_time = game_end_default.time() if game_end_default else dtime(23, 59)
+
+        tf_col1, tf_col2 = st.columns(2)
+        with tf_col1:
+            start_time_input = st.time_input(
+                "Start (ET)",
+                value=default_start_time,
+                step=60,
+            )
+        with tf_col2:
+            end_time_input = st.time_input(
+                "End (ET)",
+                value=default_end_time,
+                step=60,
+            )
+
+        ref_date = game_start_default.date() if game_start_default else datetime.today().date()
+        START_DT = datetime.combine(ref_date, start_time_input).replace(tzinfo=ET)
+        END_DT = datetime.combine(ref_date, end_time_input).replace(tzinfo=ET)
+
+    # =========================
+    # APPLY FILTERS
+    # =========================
+    run_filters = st.button("Apply Filters")
 
     def inning_match(ab):
         if not USE_INNING_FILTER:
@@ -300,17 +324,13 @@ if st.session_state.selected_game_pk:
     def time_match(ab):
         if not USE_TIME_FILTER:
             return True
-        if not ab["start_dt"]:
+        if not ab["start_dt"] or START_DT is None or END_DT is None:
             return False
         return START_DT <= ab["start_dt"] <= END_DT
 
     filtered = at_bats
-
     if run_filters:
-        filtered = [
-            ab for ab in at_bats
-            if inning_match(ab) and time_match(ab)
-        ]
+        filtered = [ab for ab in at_bats if inning_match(ab) and time_match(ab)]
 
     # =========================
     # OUTPUT
@@ -318,7 +338,6 @@ if st.session_state.selected_game_pk:
     prev_score = None
 
     for ab in filtered:
-
         emoji = get_result_emoji(ab["result"], ab["desc"])
         inning_label = f"{ab['inning_raw']} ({ab['half_inning']})"
 
@@ -327,31 +346,27 @@ if st.session_state.selected_game_pk:
         score = f"{ab['away_score']} - {ab['home_score']}"
 
         if score != prev_score and prev_score is not None:
-            st.write(f"🏟️ {inning_label} | 📊 {score} 🔥 SCORING PLAY 🔥")
+            st.write(f"Inning {inning_label} | Score {score} — SCORING PLAY")
         else:
-            st.write(f"🏟️ {inning_label} | 📊 {score}")
+            st.write(f"Inning {inning_label} | Score {score}")
 
-        st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
-        st.write(f"📌 {ab['result']} - {ab['desc']}")
+        st.write(f"Batter: {ab['batter']} vs Pitcher: {ab['pitcher']}")
+        st.write(f"Result: {ab['result']} — {ab['desc']}")
+        st.write(f"At Bat Start: {format_full_et(ab['start_dt'])}")
+        st.success(f"Last Pitch: {format_full_et(ab['last_pitch_dt'])}")
+        st.write(f"At Bat End: {format_full_et(ab['end_dt'])}")
 
-        st.write(f"🕒 At Bat Start: {format_full_et(ab['start_dt'])}")
-        st.success(f"🕒 Last Pitch: {format_full_et(ab['last_pitch_dt'])}")
-        st.write(f"🕒 At Bat End: {format_full_et(ab['end_dt'])}")
-
-        # =========================
-        # PITCH-BY-PITCH
-        # =========================
         if ab["pitches"]:
-            with st.expander(f"🎯 Pitch-by-Pitch ({len(ab['pitches'])} pitches)"):
+            with st.expander(f"Pitch-by-Pitch ({len(ab['pitches'])} pitches)"):
                 for p in ab["pitches"]:
                     p_emoji = get_pitch_emoji(p["call"])
-                    speed_str = f" · {p['speed_mph']:.1f} mph" if p["speed_mph"] else ""
+                    speed_str = f" - {p['speed_mph']:.1f} mph" if p["speed_mph"] else ""
                     count_str = f"Count: {p['balls']}-{p['strikes']}"
                     time_str = format_full_et(p["start_time"]) if p["start_time"] else ""
                     st.markdown(
                         f"{p_emoji} **Pitch {p['num']}** — {p['pitch_name']}{speed_str}  \n"
-                        f"&nbsp;&nbsp;&nbsp;&nbsp;📣 *{p['call']}* | {count_str}"
-                        + (f" | 🕒 {time_str}" if time_str else "")
+                        f"&nbsp;&nbsp;&nbsp;&nbsp;*{p['call']}* | {count_str}"
+                        + (f" | {time_str}" if time_str else "")
                     )
 
         st.divider()
@@ -362,8 +377,6 @@ if st.session_state.selected_game_pk:
 # =========================
 else:
 
-    # Monday-first date input via locale workaround
-    import locale
     date = st.date_input(
         "Select date",
         datetime.today(),
@@ -371,7 +384,7 @@ else:
     )
     date_str = date.strftime("%Y-%m-%d")
 
-    st.markdown(f"## 📅 MLB Schedule — {date_str}")
+    st.markdown(f"## MLB Schedule — {date_str}")
 
     url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_str}"
     data = requests.get(url).json()
@@ -380,7 +393,6 @@ else:
 
     for d in data.get("dates", []):
         for g in d.get("games", []):
-
             away = g["teams"]["away"]["team"]
             home = g["teams"]["home"]["team"]
             away_abbr = get_team_abbrev(away["id"], away["name"])
@@ -400,65 +412,114 @@ else:
                 "home_score": g["teams"]["home"].get("score", 0),
             })
 
-    # Schedule card CSS
+    # =========================
+    # FIXED-HEIGHT SCHEDULE CARDS
+    # Each pair of games is rendered as a single HTML row so both cards
+    # share the exact same fixed height — no misalignment.
+    # The "Open" buttons below each row handle actual navigation.
+    # =========================
     st.markdown("""
     <style>
-    .matchup {
+    .schedule-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 4px;
+    }
+    .schedule-card {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 8px;
+        padding: 10px 14px;
+        height: 76px;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+    .sc-logos {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+    .sc-logos img {
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
+    }
+    .sc-text {
+        flex: 1;
+        min-width: 0;
+    }
+    .sc-matchup {
         font-weight: 700;
         font-size: 17px;
-        line-height: 1.3;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-bottom: 3px;
-    }
-    .game-meta {
-        color: #aaa;
-        font-size: 13px;
-        line-height: 1.4;
+        line-height: 1.2;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    /* Stretch container vertically so logos align with text */
-    [data-testid="stHorizontalBlock"] [data-testid="stVerticalBlock"] {
-        justify-content: center;
+    .sc-meta {
+        font-size: 12px;
+        color: #999;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 3px;
+    }
+    .schedule-btn-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 12px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    cols = st.columns(2)
+    # Render games in pairs
+    for row_start in range(0, len(games), 2):
+        row_games = games[row_start:row_start + 2]
 
-    for i, game in enumerate(games):
-
-        with cols[i % 2]:
-
+        # HTML card row (fixed height, perfectly aligned)
+        cards_html = ""
+        for game in row_games:
             time_str = format_et(game["time"])
             status = game["status"]
-            away_abbr = game["away_abbr"]
-            home_abbr = game["home_abbr"]
 
             if status.lower() != "scheduled":
                 score_str = f"{game['away_score']}-{game['home_score']}"
-                meta_line = f"🕒 {time_str} · {status} · {score_str}"
+                meta = f"{time_str} · {status} · {score_str}"
             else:
-                meta_line = f"🕒 {time_str} · {status}"
+                meta = f"{time_str} · {status}"
 
-            with st.container(border=True):
-                c1, c2, c3 = st.columns([1, 5, 1])
+            cards_html += f"""
+            <div class="schedule-card">
+                <div class="sc-logos">
+                    <img src="{game['away_logo']}" />
+                    <img src="{game['home_logo']}" />
+                </div>
+                <div class="sc-text">
+                    <div class="sc-matchup">{game['away_abbr']} @ {game['home_abbr']}</div>
+                    <div class="sc-meta">{meta}</div>
+                </div>
+            </div>
+            """
 
-                with c1:
-                    st.image(game["away_logo"], width=28)
-                    st.image(game["home_logo"], width=28)
+        # Pad to 2 columns if odd number of games
+        if len(row_games) == 1:
+            cards_html += "<div></div>"
 
-                with c2:
-                    st.markdown(
-                        f"<div class='matchup'>{away_abbr} @ {home_abbr}</div>"
-                        f"<div class='game-meta'>{meta_line}</div>",
-                        unsafe_allow_html=True,
-                    )
+        st.markdown(f'<div class="schedule-row">{cards_html}</div>', unsafe_allow_html=True)
 
-                with c3:
-                    if st.button("▶", key=f"go_{game['gamePk']}", use_container_width=True, help=f"{game['away_name']} @ {game['home_name']}"):
-                        st.session_state.selected_game_pk = game["gamePk"]
-                        st.rerun()
+        # Navigation buttons sit flush below the cards
+        btn_cols = st.columns(2)
+        for col_idx, game in enumerate(row_games):
+            with btn_cols[col_idx]:
+                if st.button(
+                    f"Open: {game['away_abbr']} @ {game['home_abbr']}",
+                    key=f"go_{game['gamePk']}",
+                    use_container_width=True,
+                ):
+                    st.session_state.selected_game_pk = game["gamePk"]
+                    st.rerun()
