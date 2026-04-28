@@ -228,6 +228,8 @@ if st.session_state.selected_game_pk:
                 last_pitch_dt = convert_to_et(event.get("startTime"))
 
         raw_inning = play.get("about", {}).get("inning")
+        away_sc = play.get("result", {}).get("awayScore", 0)
+        home_sc = play.get("result", {}).get("homeScore", 0)
 
         at_bats.append({
             "atBatIndex": play.get("atBatIndex"),
@@ -235,8 +237,8 @@ if st.session_state.selected_game_pk:
             "pitcher": play.get("matchup", {}).get("pitcher", {}).get("fullName"),
             "result": play.get("result", {}).get("event"),
             "desc": play.get("result", {}).get("description"),
-            "away_score": play.get("result", {}).get("awayScore"),
-            "home_score": play.get("result", {}).get("homeScore"),
+            "away_score": away_sc,
+            "home_score": home_sc,
             "inning_raw": raw_inning,
             "inning_group": "Extra Innings" if raw_inning >= 10 else raw_inning,
             "half_inning": play.get("about", {}).get("halfInning"),
@@ -245,6 +247,18 @@ if st.session_state.selected_game_pk:
             "last_pitch_dt": last_pitch_dt,
             "pitches": pitches,
         })
+
+    # =========================
+    # TAG SCORING PLAYS
+    # A scoring play is any at-bat where the combined score
+    # (away + home) is higher than the previous at-bat's score.
+    # We pre-compute this so the filter can use it.
+    # =========================
+    prev_total = 0
+    for ab in at_bats:
+        total = (ab["away_score"] or 0) + (ab["home_score"] or 0)
+        ab["is_scoring_play"] = total > prev_total
+        prev_total = total
 
     # =========================
     # DERIVE GAME TIME BOUNDS FOR FILTER DEFAULTS
@@ -262,8 +276,9 @@ if st.session_state.selected_game_pk:
     # =========================
     # FILTER CHECKBOXES
     # =========================
-    USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
-    USE_TIME_FILTER = st.checkbox("Filter by Actual Time (ET)", value=False)
+    USE_INNING_FILTER = st.checkbox("🏟️ Filter by Inning", value=False)
+    USE_TIME_FILTER = st.checkbox("🕐 Filter by Actual Time (ET)", value=False)
+    USE_SCORING_FILTER = st.checkbox("🔥 Scoring Plays Only", value=False)
 
     START_DT = None
     END_DT = None
@@ -328,9 +343,22 @@ if st.session_state.selected_game_pk:
             return False
         return START_DT <= ab["start_dt"] <= END_DT
 
+    def scoring_match(ab):
+        if not USE_SCORING_FILTER:
+            return True
+        return ab["is_scoring_play"]
+
     filtered = at_bats
     if run_filters:
-        filtered = [ab for ab in at_bats if inning_match(ab) and time_match(ab)]
+        filtered = [
+            ab for ab in at_bats
+            if inning_match(ab) and time_match(ab) and scoring_match(ab)
+        ]
+
+    # Show summary if scoring filter is active
+    if USE_SCORING_FILTER and run_filters:
+        total_scoring = sum(1 for ab in at_bats if ab["is_scoring_play"])
+        st.info(f"🔥 Showing {len(filtered)} scoring play(s) out of {len(at_bats)} total at-bats")
 
     # =========================
     # OUTPUT
@@ -346,10 +374,8 @@ if st.session_state.selected_game_pk:
 
         score = f"{ab['away_score']} - {ab['home_score']}"
 
-        is_scoring = score != prev_score and prev_score is not None
-
         # Inning + score row
-        if is_scoring:
+        if ab["is_scoring_play"]:
             st.markdown(f"🏟️ **Inning:** {inning_label} &nbsp;|&nbsp; 📊 **Score:** {score} &nbsp; 🔥 *Scoring Play!*")
         else:
             st.markdown(f"🏟️ **Inning:** {inning_label} &nbsp;|&nbsp; 📊 **Score:** {score}")
@@ -427,11 +453,6 @@ else:
                 "home_score": g["teams"]["home"].get("score", 0),
             })
 
-    # Build all schedule HTML as one big self-contained block with
-    # inline <style> so CSS classes are always scoped to this component.
-    # Using st.components.v1.html guarantees the HTML is rendered,
-    # not escaped as text like st.markdown sometimes does.
-
     card_items = []
     for game in games:
         time_str = format_et(game["time"])
@@ -452,8 +473,6 @@ else:
             "home_name": game["home_name"],
         })
 
-    # Render in pairs using st.columns — but enforce uniform card height
-    # with CSS applied via a global style block injected once
     st.markdown("""
 <style>
 div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper"] {
@@ -462,25 +481,6 @@ div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper
     max-height: 80px !important;
     overflow: hidden;
 }
-.game-card-inner {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    height: 100%;
-    padding: 2px 0;
-}
-.game-logos {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex-shrink: 0;
-}
-.game-logos img {
-    width: 26px;
-    height: 26px;
-    object-fit: contain;
-}
-.game-text { flex: 1; min-width: 0; }
 .game-matchup {
     font-weight: 700;
     font-size: 16px;
