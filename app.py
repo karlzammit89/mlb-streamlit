@@ -39,14 +39,6 @@ def format_full_et(dt):
     return dt.strftime("%Y-%m-%d %H:%M:%S") + " ET"
 
 # =========================
-# INNING NORMALIZATION
-# =========================
-def normalize_inning(inning):
-    if inning is None:
-        return None
-    return "Extra Innings" if inning >= 10 else inning
-
-# =========================
 # EMOJIS
 # =========================
 def get_result_emoji(result_event: str, desc: str = ""):
@@ -99,35 +91,6 @@ if st.session_state.selected_game_pk:
     away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
 
     # =========================
-    # HEADER
-    # =========================
-    c1, c2, c3 = st.columns([1, 4, 1])
-
-    with c1:
-        st.image(away_logo, width=60)
-
-    with c2:
-        st.markdown(
-            f"""
-            <div style="
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 100%;
-                white-space: nowrap;
-                font-size: clamp(12px, 2.2vw, 22px);
-                font-weight: 700;
-            ">
-                {away_team} {away_score} - {home_score} {home_team}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    with c3:
-        st.image(home_logo, width=60)
-
-    # =========================
     # FILTERS
     # =========================
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
@@ -159,7 +122,11 @@ if st.session_state.selected_game_pk:
             "desc": play.get("result", {}).get("description"),
             "away_score": play.get("result", {}).get("awayScore"),
             "home_score": play.get("result", {}).get("homeScore"),
-            "inning": normalize_inning(raw_inning),
+
+            # ✅ CHANGE ONLY: keep both raw + grouped inning
+            "inning_raw": raw_inning,
+            "inning_group": "Extra Innings" if raw_inning >= 10 else raw_inning,
+
             "half_inning": play.get("about", {}).get("halfInning"),
             "start_dt": start_dt,
             "end_dt": end_dt,
@@ -167,16 +134,15 @@ if st.session_state.selected_game_pk:
         })
 
     # =========================
-    # INNING FILTER UI (FIXED ORDER)
+    # INNING FILTER UI
     # =========================
     all_innings = sorted(
-        {ab["inning"] for ab in at_bats if ab["inning"] is not None},
+        {ab["inning_group"] for ab in at_bats if ab["inning_group"] is not None},
         key=lambda x: (x == "Extra Innings", x if isinstance(x, int) else 999)
     )
 
     selected_innings = []
 
-    # 👇 NOW DIRECTLY UNDER CHECKBOX
     if USE_INNING_FILTER:
         selected_innings = st.multiselect(
             "Select innings",
@@ -194,7 +160,7 @@ if st.session_state.selected_game_pk:
             return True
         if not selected_innings:
             return False
-        return ab["inning"] in selected_innings
+        return ab["inning_group"] in selected_innings
 
     def time_match(ab):
         if not USE_TIME_FILTER:
@@ -219,7 +185,9 @@ if st.session_state.selected_game_pk:
     for ab in filtered:
 
         emoji = get_result_emoji(ab["result"], ab["desc"])
-        inning_label = f"{ab['inning']} ({ab['half_inning']})"
+
+        # ✅ CHANGE ONLY: use raw inning for display
+        inning_label = f"{ab['inning_raw']} ({ab['half_inning']})"
 
         st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
