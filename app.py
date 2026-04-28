@@ -9,9 +9,18 @@ from zoneinfo import ZoneInfo
 st.title("⚾ MLB Dashboard")
 
 # =========================
+# SESSION STATE INIT
+# =========================
+if "mode" not in st.session_state:
+    st.session_state.mode = "Schedule"
+
+if "selected_game_pk" not in st.session_state:
+    st.session_state.selected_game_pk = None
+
+# =========================
 # MODE
 # =========================
-mode = st.radio("Select Mode", ["Schedule", "Game Feed"])
+mode = st.radio("Select Mode", ["Schedule", "Game Feed"], key="mode")
 
 # =========================
 # HELPERS
@@ -90,7 +99,16 @@ if mode == "Schedule":
         if games:
             for game in games:
                 time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
-                st.write(f"{game['gamePk']} | ⚾ {game['matchup']} | 🕒 {time_only} (ET)")
+
+                col1, col2 = st.columns([1, 5])
+
+                with col1:
+                    if st.button(f"{game['gamePk']}", key=f"game_{game['gamePk']}"):
+                        st.session_state.selected_game_pk = game["gamePk"]
+                        st.session_state.mode = "Game Feed"
+
+                with col2:
+                    st.write(f"⚾ {game['matchup']} | 🕒 {time_only} (ET)")
         else:
             st.warning("No games found")
 
@@ -100,7 +118,8 @@ if mode == "Schedule":
 # =========================
 if mode == "Game Feed":
 
-    game_pk = st.text_input("Enter Game ID", "823878")
+    default_game = st.session_state.selected_game_pk or "823878"
+    game_pk = st.text_input("Enter Game ID", str(default_game))
 
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
     TARGET_INNINGS = []
@@ -133,9 +152,19 @@ if mode == "Game Feed":
         END_DT = datetime.combine(end_date, end_time).replace(tzinfo=ZoneInfo("America/New_York"))
 
     # =========================
+    # AUTO LOAD IF SELECTED
+    # =========================
+    auto_load = False
+
+    if st.session_state.selected_game_pk:
+        game_pk = str(st.session_state.selected_game_pk)
+        auto_load = True
+        st.session_state.selected_game_pk = None
+
+    # =========================
     # LOAD GAME
     # =========================
-    if st.button("Load Game Feed"):
+    if st.button("Load Game Feed") or auto_load:
 
         url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
         data = requests.get(url).json()
