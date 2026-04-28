@@ -98,9 +98,7 @@ if st.session_state.selected_game_pk:
     home_score = linescore.get("teams", {}).get("home", {}).get("runs", 0)
     away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
 
-    # =========================
     # HEADER
-    # =========================
     c1, c2, c3 = st.columns([1, 4, 1])
 
     with c1:
@@ -127,6 +125,9 @@ if st.session_state.selected_game_pk:
     with c3:
         st.image(home_logo, width=60)
 
+    # =========================
+    # FILTERS
+    # =========================
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
     USE_TIME_FILTER = st.checkbox("Filter by actual time (ET)", value=False)
 
@@ -163,10 +164,8 @@ if st.session_state.selected_game_pk:
             "last_pitch_dt": last_pitch_dt,
         })
 
-    run_filters = st.button("🚀 Apply Filters")
-
     # =========================
-    # INNING FILTER OPTIONS
+    # INNING OPTIONS (FIXED UI)
     # =========================
     all_innings = sorted(
         {ab["inning"] for ab in at_bats if ab["inning"] is not None},
@@ -174,16 +173,26 @@ if st.session_state.selected_game_pk:
     )
 
     selected_innings = None
+
     if USE_INNING_FILTER:
+
+        # moved directly under checkbox + EMPTY default
         selected_innings = st.multiselect(
             "Select innings",
             options=all_innings,
-            default=all_innings
+            default=[]
         )
+
+    # =========================
+    # FILTER LOGIC
+    # =========================
+    run_filters = st.button("🚀 Apply Filters")
 
     def inning_match(ab):
         if not USE_INNING_FILTER:
             return True
+        if not selected_innings:
+            return False
         return ab["inning"] in selected_innings
 
     def time_match(ab):
@@ -201,6 +210,9 @@ if st.session_state.selected_game_pk:
             if inning_match(ab) and time_match(ab)
         ]
 
+    # =========================
+    # OUTPUT
+    # =========================
     prev_score = None
 
     for ab in filtered:
