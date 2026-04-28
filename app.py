@@ -241,7 +241,7 @@ if st.session_state.selected_game_pk:
 
 
 # =========================
-# SCHEDULE VIEW (IMPROVED)
+# SCHEDULE VIEW (COMPACT)
 # =========================
 else:
 
@@ -278,31 +278,30 @@ else:
         st.stop()
 
     # =========================
-    # DISPLAY AS CARDS
+    # COMPACT GRID
     # =========================
-    for game in games:
+    cols = st.columns(2)
 
-        time_str = game["time"].strftime("%I:%M %p ET") if game["time"] else "TBD"
-        status = game["status"]
+    for i, game in enumerate(games):
 
-        with st.container(border=True):
+        with cols[i % 2]:
 
-            col1, col2, col3 = st.columns([1, 2, 1])
+            time_str = game["time"].strftime("%I:%M %p") if game["time"] else "TBD"
 
-            with col1:
-                st.image(game["away_logo"], width=60)
-                st.image(game["home_logo"], width=60)
+            with st.container(border=True):
 
-            with col2:
-                st.markdown(f"""
-                ### ⚾ {game['away_name']} @ {game['home_name']}
-                🕒 **{time_str}**  
-                🏷️ `{status}`
-                """)
+                c1, c2 = st.columns([1, 4])
 
-            with col3:
-                if st.button("▶ Watch", key=f"game_{game['gamePk']}"):
+                with c1:
+                    st.image(game["away_logo"], width=28)
+                    st.image(game["home_logo"], width=28)
+
+                with c2:
+                    st.markdown(
+                        f"**{game['away_name']} @ {game['home_name']}**  \n"
+                        f"🕒 {time_str} | 🏷️ {game['status']}"
+                    )
+
+                if st.button("▶", key=f"game_{game['gamePk']}"):
                     st.session_state.selected_game_pk = game["gamePk"]
                     st.rerun()
-
-            st.markdown("---")
