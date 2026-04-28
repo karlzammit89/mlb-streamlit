@@ -193,44 +193,44 @@ if st.session_state.selected_game_pk:
 # =========================
 # SCHEDULE VIEW (AUTO LOAD ON DATE CHANGE)
 # =========================
+
+date = st.date_input("Select date", datetime.today())
+date_str = date.strftime("%Y-%m-%d")
+
+# =========================
+# TITLE WITH SELECTED DATE
+# =========================
+st.markdown(f"### 📅 Games for {date_str}")
+
+url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_str}"
+data = requests.get(url).json()
+
+games = [
+    {
+        "gamePk": g["gamePk"],
+        "matchup": f'{g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}',
+        "time": convert_to_et_str(g.get("gameDate"))
+    }
+    for d in data.get("dates", [])
+    for g in d.get("games", [])
+]
+
+st.session_state.games = games
+
+if games:
+
+    for game in games:
+
+        time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
+
+        with st.container():
+
+            if st.button(
+                f"⚾ {game['matchup']} | 🕒 {time_only} (ET) | ID: {game['gamePk']}",
+                key=f"game_{game['gamePk']}"
+            ):
+                st.session_state.selected_game_pk = game["gamePk"]
+                st.rerun()
+
 else:
-
-    date = st.date_input("Select date", datetime.today())
-    date_str = date.strftime("%Y-%m-%d")
-
-    url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_str}"
-    data = requests.get(url).json()
-
-    games = [
-        {
-            "gamePk": g["gamePk"],
-            "matchup": f'{g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}',
-            "time": convert_to_et_str(g.get("gameDate"))
-        }
-        for d in data.get("dates", [])
-        for g in d.get("games", [])
-    ]
-
-    st.session_state.games = games
-
-    if games:
-
-        st.markdown("### 📅 Games")
-
-        for game in games:
-
-            time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
-
-            with st.container():
-
-                if st.button(
-                    f"⚾ {game['matchup']} | 🕒 {time_only} (ET) | ID: {game['gamePk']}",
-                    key=f"game_{game['gamePk']}"
-                ):
-                    st.session_state.selected_game_pk = game["gamePk"]
-                    st.rerun()
-
-            st.divider()
-
-    else:
-        st.warning("No games found for this date")
+    st.warning("No games found for this date")
