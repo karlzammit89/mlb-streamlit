@@ -96,7 +96,14 @@ if st.session_state.selected_game_pk:
         st.image(away_logo, width=60)
 
     with c2:
-        st.markdown(f"# ⚾ {away_team} {away_score} - {home_score} {home_team}")
+        st.markdown(
+    f"""
+    <h2 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        ⚾ {away_team} {away_score} - {home_score} {home_team}
+    </h2>
+    """,
+    unsafe_allow_html=True
+)
 
     with c3:
         st.image(home_logo, width=60)
