@@ -91,6 +91,36 @@ if st.session_state.selected_game_pk:
     away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
 
     # =========================
+    # HEADER (RESTORED)
+    # =========================
+    c1, c2, c3 = st.columns([1, 4, 1])
+
+    with c1:
+        st.image(away_logo, width=60)
+
+    with c2:
+        st.markdown(
+            f"""
+            <div style="
+                text-align: center;
+                font-weight: 700;
+                font-size: clamp(14px, 2.2vw, 24px);
+                line-height: 1.4;
+            ">
+                {away_team} {away_score} - {home_score} {home_team}
+                <br>
+                <span style="font-size: 14px; font-weight: 500;">
+                    {data.get("gameData", {}).get("status", {}).get("detailedState", "Unknown")}
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    with c3:
+        st.image(home_logo, width=60)
+
+    # =========================
     # FILTERS
     # =========================
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
@@ -123,7 +153,6 @@ if st.session_state.selected_game_pk:
             "away_score": play.get("result", {}).get("awayScore"),
             "home_score": play.get("result", {}).get("homeScore"),
 
-            # keep both
             "inning_raw": raw_inning,
             "inning_group": "Extra Innings" if raw_inning >= 10 else raw_inning,
 
@@ -185,10 +214,8 @@ if st.session_state.selected_game_pk:
     for ab in filtered:
 
         emoji = get_result_emoji(ab["result"], ab["desc"])
-
         inning_label = f"{ab['inning_raw']} ({ab['half_inning']})"
 
-        # ✅ RESTORED TITLE
         st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
         score = f"{ab['away_score']} - {ab['home_score']}"
