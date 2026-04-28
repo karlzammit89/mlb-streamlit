@@ -241,7 +241,7 @@ if st.session_state.selected_game_pk:
 
 
 # =========================
-# SCHEDULE VIEW (UPGRADED + COMPACT)
+# SCHEDULE VIEW (FINAL UPGRADE)
 # =========================
 else:
 
@@ -261,6 +261,11 @@ else:
             away = g["teams"]["away"]["team"]
             home = g["teams"]["home"]["team"]
 
+            status = g.get("status", {}).get("detailedState", "Scheduled")
+
+            away_score = g["teams"]["away"].get("score", 0)
+            home_score = g["teams"]["home"].get("score", 0)
+
             games.append({
                 "gamePk": g["gamePk"],
                 "away_name": away["name"],
@@ -268,7 +273,9 @@ else:
                 "away_logo": f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{away['id']}.svg",
                 "home_logo": f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{home['id']}.svg",
                 "time": convert_to_et(g.get("gameDate")),
-                "status": g.get("status", {}).get("detailedState", "Scheduled")
+                "status": status,
+                "away_score": away_score,
+                "home_score": home_score
             })
 
     st.session_state.games = games
@@ -278,7 +285,7 @@ else:
         st.stop()
 
     # =========================
-    # 2-COLUMN COMPACT GRID
+    # 2-COLUMN GRID
     # =========================
     cols = st.columns(2)
 
@@ -286,11 +293,19 @@ else:
 
         with cols[i % 2]:
 
-            time_str = game["time"].strftime("%I:%M %p") if game["time"] else "TBD"
+            # 24-hour time format
+            time_str = game["time"].strftime("%H:%M") if game["time"] else "TBD"
+
+            status = game["status"]
+
+            # show score only if game is NOT scheduled
+            if status.lower() == "scheduled":
+                status_line = f"🏷️ {status}"
+            else:
+                status_line = f"🏷️ {status} | 📊 {game['away_score']} - {game['home_score']}"
 
             with st.container(border=True):
 
-                # layout: logos | info | GO
                 c1, c2, c3 = st.columns([1, 5, 1])
 
                 with c1:
@@ -300,7 +315,7 @@ else:
                 with c2:
                     st.markdown(
                         f"**{game['away_name']} @ {game['home_name']}**  \n"
-                        f"🕒 {time_str} | 🏷️ {game['status']}"
+                        f"🕒 {time_str} | {status_line}"
                     )
 
                 with c3:
