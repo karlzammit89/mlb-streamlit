@@ -89,7 +89,7 @@ if st.session_state.selected_game_pk:
     home_team = data.get("gameData", {}).get("teams", {}).get("home", {}).get("name", "Home")
     away_team = data.get("gameData", {}).get("teams", {}).get("away", {}).get("name", "Away")
 
-    st.markdown(f"## 🎮 {away_team} @ {home_team}")
+    st.markdown(f"## ⚾ {away_team} @ {home_team}")
 
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
     TARGET_INNINGS = []
