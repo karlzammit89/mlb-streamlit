@@ -362,9 +362,13 @@ if st.session_state.selected_game_pk:
         total = len(at_bats)
         showing = len(filtered)
 
+        if showing == 0:
+            st.warning("⚠️ No results found — please check the filters applied.")
+            st.stop()
+
         if USE_INNING_FILTER:
             inning_labels = [str(i) for i in selected_innings] if selected_innings else ["none selected"]
-            st.info(f"🏟️ **Inning filter:** Inning(s) {', '.join(inning_labels)} — showing **{showing}** of **{total}** at-bats")
+            st.info(f"🏟️ **Inning filter:** Innings {', '.join(inning_labels)} — showing **{showing}** of **{total}** at-bats")
 
         if USE_TIME_FILTER:
             st.info(f"🕐 **Time filter:** {START_DT.strftime('%H:%M')} → {END_DT.strftime('%H:%M')} ET — showing **{showing}** of **{total}** at-bats")
@@ -373,9 +377,6 @@ if st.session_state.selected_game_pk:
             total_scoring = sum(1 for ab in at_bats if ab["is_scoring_play"])
             st.info(f"🔥 **Scoring plays filter:** {total_scoring} scoring play(s) in game — showing **{showing}** of **{total}** at-bats")
 
-        if showing == 0:
-            st.warning("⚠️ No results found — please check the filters applied.")
-            st.stop()
 
     # =========================
     # OUTPUT
