@@ -9,24 +9,13 @@ from zoneinfo import ZoneInfo
 st.title("⚾ MLB Dashboard")
 
 # =========================
-# MODE CONTROL (FIXED - IMPORTANT)
-# =========================
-if "mode" not in st.session_state:
-    st.session_state.mode = "Schedule"
-
-selected_mode = st.radio(
-    "Select Mode",
-    ["Schedule", "Game Feed"],
-    index=0 if st.session_state.mode == "Schedule" else 1
-)
-
-st.session_state.mode = selected_mode
-
-# =========================
-# SELECTED GAME STATE
+# STATE
 # =========================
 if "selected_game_pk" not in st.session_state:
     st.session_state.selected_game_pk = None
+
+if "loaded_game_pk" not in st.session_state:
+    st.session_state.loaded_game_pk = None
 
 
 # =========================
@@ -81,59 +70,60 @@ def get_result_emoji(result_event: str, desc: str = ""):
 
 
 # =========================
-# MODE 1 — SCHEDULE
+# SCHEDULE
 # =========================
-if st.session_state.mode == "Schedule":
+date = st.date_input("Select date", datetime.today())
+date_str = date.strftime("%Y-%m-%d")
 
-    date = st.date_input("Select date", datetime.today())
-    date_str = date.strftime("%Y-%m-%d")
+if st.button("Load Games"):
 
-    if st.button("Load Games"):
+    url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_str}"
+    data = requests.get(url).json()
 
-        url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_str}"
-        data = requests.get(url).json()
+    games = [
+        {
+            "gamePk": g["gamePk"],
+            "matchup": f'{g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}',
+            "time": convert_to_et_str(g.get("gameDate"))
+        }
+        for d in data.get("dates", [])
+        for g in d.get("games", [])
+    ]
 
-        games = [
-            {
-                "gamePk": g["gamePk"],
-                "matchup": f'{g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}',
-                "time": convert_to_et_str(g.get("gameDate"))
-            }
-            for d in data.get("dates", [])
-            for g in d.get("games", [])
-        ]
-
-        if games:
-
-            st.markdown("### 📅 Games")
-
-            for game in games:
-
-                time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
-
-                with st.container():
-
-                    if st.button(
-                        f"⚾ {game['matchup']} | 🕒 {time_only} (ET) | ID: {game['gamePk']}",
-                        key=f"game_{game['gamePk']}"
-                    ):
-                        st.session_state.selected_game_pk = game["gamePk"]
-                        st.session_state.mode = "Game Feed"
-                        st.rerun()
-
-                st.divider()
-
-        else:
-            st.warning("No games found")
+    st.session_state.games = games
 
 
 # =========================
-# MODE 2 — GAME FEED
+# DISPLAY GAMES (CLICKABLE ROWS)
 # =========================
-if st.session_state.mode == "Game Feed":
+if "games" in st.session_state:
 
-    default_game = st.session_state.selected_game_pk or "823878"
-    game_pk = st.text_input("Enter Game ID", str(default_game))
+    st.markdown("### 📅 Games")
+
+    for game in st.session_state.games:
+
+        time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
+
+        with st.container():
+
+            if st.button(
+                f"⚾ {game['matchup']} | 🕒 {time_only} (ET) | ID: {game['gamePk']}",
+                key=f"game_{game['gamePk']}"
+            ):
+                st.session_state.selected_game_pk = game["gamePk"]
+                st.session_state.loaded_game_pk = game["gamePk"]
+
+        st.divider()
+
+
+# =========================
+# GAME FEED (AUTO LOAD ON CLICK)
+# =========================
+game_pk = st.session_state.loaded_game_pk
+
+if game_pk:
+
+    st.markdown(f"## 🎮 Game Feed: {game_pk}")
 
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
     TARGET_INNINGS = []
@@ -166,119 +156,112 @@ if st.session_state.mode == "Game Feed":
         END_DT = datetime.combine(end_date, end_time).replace(tzinfo=ZoneInfo("America/New_York"))
 
     # =========================
-    # AUTO LOAD TRIGGER
+    # LOAD GAME FEED
     # =========================
-    auto_load = False
+    url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
+    data = requests.get(url).json()
 
-    if st.session_state.selected_game_pk:
-        game_pk = str(st.session_state.selected_game_pk)
-        auto_load = True
-        st.session_state.selected_game_pk = None
+    at_bats = []
+
+    for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
+
+        start_time = convert_to_et_str(play.get("about", {}).get("startTime"))
+        end_time = convert_to_et_str(play.get("about", {}).get("endTime"))
+
+        result_event = play.get("result", {}).get("event")
+        result_desc = play.get("result", {}).get("description")
+
+        away_score = play.get("result", {}).get("awayScore")
+        home_score = play.get("result", {}).get("homeScore")
+
+        inning = play.get("about", {}).get("inning")
+        half_inning = play.get("about", {}).get("halfInning", "")
+
+        last_pitch_time = None
+        pitches = []
+
+        for event in play.get("playEvents", []):
+            if event.get("isPitch"):
+                pitches.append(event.get("details", {}).get("description"))
+                last_pitch_time = convert_to_et_str(event.get("startTime"))
+
+        at_bats.append({
+            "atBatIndex": play.get("atBatIndex"),
+            "batter": play.get("matchup", {}).get("batter", {}).get("fullName"),
+            "pitcher": play.get("matchup", {}).get("pitcher", {}).get("fullName"),
+            "result": result_event,
+            "desc": result_desc,
+            "score": f"{away_score} - {home_score}",
+            "startTime": start_time,
+            "endTime": end_time,
+            "lastPitchTime": last_pitch_time,
+            "inning": inning,
+            "half_inning": half_inning,
+            "pitches": pitches
+        })
 
     # =========================
-    # LOAD GAME
+    # FILTER
     # =========================
-    if st.button("Load Game Feed") or auto_load:
+    def inning_filter(ab):
+        inning = ab.get("inning")
 
-        url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
-        data = requests.get(url).json()
+        if not USE_INNING_FILTER:
+            return True
 
-        at_bats = []
+        if inning is None:
+            return False
 
-        for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
+        if "Extra Innings" in TARGET_INNINGS and inning >= 10:
+            return True
 
-            start_time = convert_to_et_str(play.get("about", {}).get("startTime"))
-            end_time = convert_to_et_str(play.get("about", {}).get("endTime"))
+        return inning in TARGET_INNINGS
 
-            result_event = play.get("result", {}).get("event")
-            result_desc = play.get("result", {}).get("description")
 
-            away_score = play.get("result", {}).get("awayScore")
-            home_score = play.get("result", {}).get("homeScore")
+    filtered_at_bats = []
 
-            inning = play.get("about", {}).get("inning")
-            half_inning = play.get("about", {}).get("halfInning", "")
+    for ab in at_bats:
 
-            last_pitch_time = None
-            pitches = []
+        if USE_TIME_FILTER and START_DT and END_DT:
+            raw_time = ab.get("startTime")
+            ab_dt = convert_to_et(raw_time)
 
-            for event in play.get("playEvents", []):
-                if event.get("isPitch"):
-                    pitches.append(event.get("details", {}).get("description"))
-                    last_pitch_time = convert_to_et_str(event.get("startTime"))
-
-            at_bats.append({
-                "atBatIndex": play.get("atBatIndex"),
-                "batter": play.get("matchup", {}).get("batter", {}).get("fullName"),
-                "pitcher": play.get("matchup", {}).get("pitcher", {}).get("fullName"),
-                "result": result_event,
-                "desc": result_desc,
-                "score": f"{away_score} - {home_score}",
-                "startTime": start_time,
-                "endTime": end_time,
-                "lastPitchTime": last_pitch_time,
-                "inning": inning,
-                "half_inning": half_inning,
-                "pitches": pitches
-            })
-
-        def inning_filter(ab):
-            inning = ab.get("inning")
-
-            if not USE_INNING_FILTER:
-                return True
-
-            if inning is None:
-                return False
-
-            if "Extra Innings" in TARGET_INNINGS and inning >= 10:
-                return True
-
-            return inning in TARGET_INNINGS
-
-        filtered_at_bats = []
-
-        for ab in at_bats:
-
-            if USE_TIME_FILTER and START_DT and END_DT:
-                raw_time = ab.get("startTime")
-                ab_dt = convert_to_et(raw_time)
-
-                if not ab_dt or not (START_DT <= ab_dt <= END_DT):
-                    continue
-
-            if not inning_filter(ab):
+            if not ab_dt or not (START_DT <= ab_dt <= END_DT):
                 continue
 
-            filtered_at_bats.append(ab)
+        if not inning_filter(ab):
+            continue
 
-        prev_score = None
+        filtered_at_bats.append(ab)
 
-        for ab in filtered_at_bats:
+    # =========================
+    # OUTPUT
+    # =========================
+    prev_score = None
 
-            emoji = get_result_emoji(ab["result"], ab["desc"])
-            inning_label = f"{ab['inning']} ({ab['half_inning']})" if ab["inning"] else "N/A"
+    for ab in filtered_at_bats:
 
-            st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
+        emoji = get_result_emoji(ab["result"], ab["desc"])
+        inning_label = f"{ab['inning']} ({ab['half_inning']})" if ab["inning"] else "N/A"
 
-            if ab["score"] != prev_score and prev_score is not None:
-                st.write(f"🏟️ {inning_label} | 📊 {ab['score']} 🔥 SCORING PLAY 🔥")
-            else:
-                st.write(f"🏟️ {inning_label} | 📊 {ab['score']}")
+        st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
 
-            st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
-            st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
+        if ab["score"] != prev_score and prev_score is not None:
+            st.write(f"🏟️ {inning_label} | 📊 {ab['score']} 🔥 SCORING PLAY 🔥")
+        else:
+            st.write(f"🏟️ {inning_label} | 📊 {ab['score']}")
 
-            st.write(f"🕒 At Bat Start Time: {ab['startTime']}")
-            st.success(f"🕒 Last Pitch Thrown: {ab['lastPitchTime']}")
-            st.write(f"🕒 At Bat End Time: {ab['endTime']}")
+        st.write(f"👤 {ab['batter']} vs 🧢 {ab['pitcher']}")
+        st.write(f"📌 Result: {ab['result']} - {ab['desc']}")
 
-            st.markdown("### 🧩 Pitches")
-            for i, p in enumerate(ab["pitches"], start=1):
-                st.write(f"⚾ Pitch {i}: {p if p else '(no description)'}")
+        st.write(f"🕒 At Bat Start Time: {ab['startTime']}")
+        st.success(f"🕒 Last Pitch Thrown: {ab['lastPitchTime']}")
+        st.write(f"🕒 At Bat End Time: {ab['endTime']}")
 
-            st.divider()
+        st.markdown("### 🧩 Pitches")
+        for i, p in enumerate(ab["pitches"], start=1):
+            st.write(f"⚾ Pitch {i}: {p if p else '(no description)'}")
 
-            prev_score = ab["score"]
+        st.divider()
 
-        st.success(f"Loaded {len(filtered_at_bats)} events")
+        prev_score = ab["score"]
