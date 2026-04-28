@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 # =========================
@@ -18,13 +18,11 @@ if "games" not in st.session_state:
     st.session_state.games = []
 
 # =========================
-# TIME HELPERS (FIXED)
+# TIME HELPERS
 # =========================
 ET = ZoneInfo("America/New_York")
 
-
 def convert_to_et(raw_time):
-    """Correct UTC -> ET conversion (NO manual string hacks)."""
     if not raw_time:
         return None
     try:
@@ -33,21 +31,18 @@ def convert_to_et(raw_time):
     except:
         return None
 
-
 def format_et(dt):
     if not dt:
         return "TBD"
     return dt.strftime("%H:%M")
-
 
 def format_full_et(dt):
     if not dt:
         return None
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
-
 # =========================
-# GAME VIEW HELPERS
+# GAME EMOJIS
 # =========================
 def get_result_emoji(result_event: str, desc: str = ""):
     text = f"{result_event or ''} {desc or ''}".lower()
@@ -71,7 +66,6 @@ def get_result_emoji(result_event: str, desc: str = ""):
 
     return "⚾"
 
-
 # =========================
 # GAME VIEW
 # =========================
@@ -86,10 +80,30 @@ if st.session_state.selected_game_pk:
     url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
     data = requests.get(url).json()
 
+    # -------------------------
+    # TEAMS
+    # -------------------------
     home_team = data.get("gameData", {}).get("teams", {}).get("home", {}).get("name", "Home")
     away_team = data.get("gameData", {}).get("teams", {}).get("away", {}).get("name", "Away")
 
-    st.markdown(f"## ⚾ {away_team} @ {home_team}")
+    # -------------------------
+    # LIVE SCORE (IMPORTANT FIX)
+    # -------------------------
+    linescore = data.get("liveData", {}).get("linescore", {})
+    home_score = linescore.get("teams", {}).get("home", {}).get("runs", 0)
+    away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
+
+    game_status = data.get("gameData", {}).get("status", {}).get("detailedState", "")
+
+    # =========================
+    # HEADER (UPDATED)
+    # =========================
+    st.markdown(
+        f"""
+        ## ⚾ {away_team} {away_score} - {home_score} {home_team}
+        🟢 {game_status}
+        """
+    )
 
     # =========================
     # FILTERS
@@ -97,12 +111,14 @@ if st.session_state.selected_game_pk:
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
     USE_TIME_FILTER = st.checkbox("Filter by actual time (ET)", value=False)
 
-    TARGET_INNINGS = []
     START_DT = None
     END_DT = None
 
     at_bats = []
 
+    # =========================
+    # PARSE PLAYS
+    # =========================
     for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
 
         start_dt = convert_to_et(play.get("about", {}).get("startTime"))
@@ -133,7 +149,7 @@ if st.session_state.selected_game_pk:
         })
 
     # =========================
-    # SMART TIME FILTER (FIXED)
+    # TIME FILTER SETUP
     # =========================
     if USE_TIME_FILTER:
 
@@ -182,9 +198,7 @@ if st.session_state.selected_game_pk:
     if run_filters:
 
         def inning_match(ab):
-            if not USE_INNING_FILTER:
-                return True
-            return ab["inning"] in TARGET_INNINGS
+            return True
 
         def time_match(ab):
             if not USE_TIME_FILTER:
@@ -225,9 +239,8 @@ if st.session_state.selected_game_pk:
 
         prev_score = score
 
-
 # =========================
-# SCHEDULE VIEW (FIXED TIME)
+# SCHEDULE VIEW
 # =========================
 else:
 
@@ -259,10 +272,6 @@ else:
                 "home_score": g["teams"]["home"].get("score", 0),
             })
 
-    if not games:
-        st.warning("No games found")
-        st.stop()
-
     cols = st.columns(2)
 
     for i, game in enumerate(games):
@@ -271,10 +280,11 @@ else:
 
             time_str = format_et(game["time"])
 
-            if game["status"].lower() == "scheduled":
-                status_line = f"🏷️ {game['status']}"
-            else:
-                status_line = f"🏷️ {game['status']} | 📊 {game['away_score']} - {game['home_score']}"
+            status_line = (
+                f"🏷️ {game['status']} | 📊 {game['away_score']} - {game['home_score']}"
+                if game["status"].lower() != "scheduled"
+                else f"🏷️ {game['status']}"
+            )
 
             with st.container(border=True):
 
