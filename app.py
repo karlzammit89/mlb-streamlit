@@ -263,7 +263,7 @@ if st.session_state.selected_game_pk:
     # FILTER CHECKBOXES
     # =========================
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
-    USE_TIME_FILTER = st.checkbox("Filter by actual time (ET)", value=False)
+    USE_TIME_FILTER = st.checkbox("Filter by Actual Time (ET)", value=False)
 
     START_DT = None
     END_DT = None
