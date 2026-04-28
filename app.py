@@ -15,7 +15,7 @@ if "selected_game_pk" not in st.session_state:
     st.session_state.selected_game_pk = None
 
 # =========================
-# TIME HELPERS
+# TIME HELPERS (ET FIXED)
 # =========================
 ET = ZoneInfo("America/New_York")
 
@@ -31,12 +31,12 @@ def convert_to_et(raw_time):
 def format_et(dt):
     if not dt:
         return "TBD"
-    return dt.strftime("%H:%M")
+    return dt.strftime("%I:%M %p") + " ET"
 
 def format_full_et(dt):
     if not dt:
         return None
-    return dt.strftime("%Y-%m-%d %H:%M:%S")
+    return dt.strftime("%Y-%m-%d %I:%M:%S %p") + " ET"
 
 # =========================
 # EMOJIS
@@ -77,9 +77,6 @@ if st.session_state.selected_game_pk:
     url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
     data = requests.get(url).json()
 
-    # -------------------------
-    # TEAMS
-    # -------------------------
     home_team = data.get("gameData", {}).get("teams", {}).get("home", {}).get("name", "Home")
     away_team = data.get("gameData", {}).get("teams", {}).get("away", {}).get("name", "Away")
 
@@ -89,32 +86,21 @@ if st.session_state.selected_game_pk:
     home_logo = f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{home_id}.svg"
     away_logo = f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{away_id}.svg"
 
-    # -------------------------
-    # LIVE SCORE
-    # -------------------------
     linescore = data.get("liveData", {}).get("linescore", {})
     home_score = linescore.get("teams", {}).get("home", {}).get("runs", 0)
     away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
 
-    # =========================
-    # HEADER (LOGOS + SCORE ONLY)
-    # =========================
     c1, c2, c3 = st.columns([1, 4, 1])
 
     with c1:
         st.image(away_logo, width=60)
 
     with c2:
-        st.markdown(
-            f"# ⚾ {away_team} {away_score} - {home_score} {home_team}"
-        )
+        st.markdown(f"# ⚾ {away_team} {away_score} - {home_score} {home_team}")
 
     with c3:
         st.image(home_logo, width=60)
 
-    # =========================
-    # FILTERS
-    # =========================
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
     USE_TIME_FILTER = st.checkbox("Filter by actual time (ET)", value=False)
 
@@ -123,20 +109,15 @@ if st.session_state.selected_game_pk:
 
     at_bats = []
 
-    # =========================
-    # PLAY DATA
-    # =========================
     for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
 
         start_dt = convert_to_et(play.get("about", {}).get("startTime"))
         end_dt = convert_to_et(play.get("about", {}).get("endTime"))
 
-        pitches = []
         last_pitch_dt = None
 
         for event in play.get("playEvents", []):
             if event.get("isPitch"):
-                pitches.append(event.get("details", {}).get("description"))
                 last_pitch_dt = convert_to_et(event.get("startTime"))
 
         at_bats.append({
@@ -154,9 +135,6 @@ if st.session_state.selected_game_pk:
             "last_pitch_dt": last_pitch_dt,
         })
 
-    # =========================
-    # FILTER APPLY
-    # =========================
     run_filters = st.button("🚀 Run Filters")
 
     filtered = at_bats
@@ -172,9 +150,6 @@ if st.session_state.selected_game_pk:
 
         filtered = [ab for ab in at_bats if time_match(ab)]
 
-    # =========================
-    # OUTPUT
-    # =========================
     prev_score = None
 
     for ab in filtered:
