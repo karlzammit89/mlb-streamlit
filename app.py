@@ -9,6 +9,21 @@ from zoneinfo import ZoneInfo
 st.title("⚾ MLB Dashboard")
 
 # =========================
+# Monday-first calendar via CSS injection
+# =========================
+st.markdown("""
+<style>
+/* Shift Streamlit's date picker to start on Monday */
+[data-testid="stDateInput"] table thead tr th:first-child {
+    display: none;
+}
+[data-testid="stDateInput"] table tbody tr td:first-child {
+    display: none;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =========================
 # STATE
 # =========================
 if "selected_game_pk" not in st.session_state:
@@ -43,7 +58,6 @@ def format_full_et(dt):
 # =========================
 def get_result_emoji(result_event: str, desc: str = ""):
     text = f"{result_event or ''} {desc or ''}".lower()
-
     if "home run" in text:
         return "💥"
     if "strikeout" in text:
@@ -60,46 +74,62 @@ def get_result_emoji(result_event: str, desc: str = ""):
         return "🏃"
     if "out" in text:
         return "❌"
-
     return "⚾"
+
+def get_pitch_emoji(pitch_result: str):
+    r = (pitch_result or "").lower()
+    if "ball" in r:
+        return "🔵"
+    if "called strike" in r:
+        return "🔴"
+    if "swinging strike" in r:
+        return "💨"
+    if "foul" in r:
+        return "🟡"
+    if "in play" in r:
+        return "⚾"
+    if "hit by pitch" in r:
+        return "🤕"
+    return "⚪"
 
 # =========================
 # TEAM ABBREVIATIONS
 # =========================
+TEAM_ABBREV = {
+    "Arizona Diamondbacks": "ARI",
+    "Atlanta Braves": "ATL",
+    "Baltimore Orioles": "BAL",
+    "Boston Red Sox": "BOS",
+    "Chicago Cubs": "CHC",
+    "Chicago White Sox": "CWS",
+    "Cincinnati Reds": "CIN",
+    "Cleveland Guardians": "CLE",
+    "Colorado Rockies": "COL",
+    "Detroit Tigers": "DET",
+    "Houston Astros": "HOU",
+    "Kansas City Royals": "KC",
+    "Los Angeles Angels": "LAA",
+    "Los Angeles Dodgers": "LAD",
+    "Miami Marlins": "MIA",
+    "Milwaukee Brewers": "MIL",
+    "Minnesota Twins": "MIN",
+    "New York Mets": "NYM",
+    "New York Yankees": "NYY",
+    "Oakland Athletics": "OAK",
+    "Philadelphia Phillies": "PHI",
+    "Pittsburgh Pirates": "PIT",
+    "San Diego Padres": "SD",
+    "San Francisco Giants": "SF",
+    "Seattle Mariners": "SEA",
+    "St. Louis Cardinals": "STL",
+    "Tampa Bay Rays": "TB",
+    "Texas Rangers": "TEX",
+    "Toronto Blue Jays": "TOR",
+    "Washington Nationals": "WSH",
+}
+
 def get_team_abbrev(team_id, name):
-    mapping = {
-        "Arizona Diamondbacks": "ARI",
-        "Atlanta Braves": "ATL",
-        "Baltimore Orioles": "BAL",
-        "Boston Red Sox": "BOS",
-        "Chicago Cubs": "CHC",
-        "Chicago White Sox": "CWS",
-        "Cincinnati Reds": "CIN",
-        "Cleveland Guardians": "CLE",
-        "Colorado Rockies": "COL",
-        "Detroit Tigers": "DET",
-        "Houston Astros": "HOU",
-        "Kansas City Royals": "KC",
-        "Los Angeles Angels": "LAA",
-        "Los Angeles Dodgers": "LAD",
-        "Miami Marlins": "MIA",
-        "Milwaukee Brewers": "MIL",
-        "Minnesota Twins": "MIN",
-        "New York Mets": "NYM",
-        "New York Yankees": "NYY",
-        "Oakland Athletics": "OAK",
-        "Philadelphia Phillies": "PHI",
-        "Pittsburgh Pirates": "PIT",
-        "San Diego Padres": "SD",
-        "San Francisco Giants": "SF",
-        "Seattle Mariners": "SEA",
-        "St. Louis Cardinals": "STL",
-        "Tampa Bay Rays": "TB",
-        "Texas Rangers": "TEX",
-        "Toronto Blue Jays": "TOR",
-        "Washington Nationals": "WSH"
-    }
-    return mapping.get(name, name[:3].upper())
+    return TEAM_ABBREV.get(name, name[:3].upper())
 
 # =========================
 # GAME VIEW
@@ -128,12 +158,12 @@ if st.session_state.selected_game_pk:
     home_score = linescore.get("teams", {}).get("home", {}).get("runs", 0)
     away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
 
-    # =========================
-    # HEADER (ABBREVIATED FIXED)
-    # =========================
     away_abbr = get_team_abbrev(away_id, away_team)
     home_abbr = get_team_abbrev(home_id, home_team)
 
+    # =========================
+    # HEADER
+    # =========================
     c1, c2, c3 = st.columns([1, 6, 1])
 
     with c1:
@@ -183,8 +213,36 @@ if st.session_state.selected_game_pk:
 
         last_pitch_dt = None
 
+        # ---- Pitch-by-pitch data ----
+        pitches = []
+        pitch_num = 0
+        balls = 0
+        strikes = 0
+
         for event in play.get("playEvents", []):
             if event.get("isPitch"):
+                pitch_num += 1
+                details = event.get("details", {})
+                pitch_type = event.get("pitchData", {}).get("startSpeed")
+                pitch_name = details.get("type", {}).get("description", "Unknown")
+                call_desc = details.get("description", "")
+                call_code = details.get("call", {}).get("code", "")
+
+                # Update count
+                count = event.get("count", {})
+                b = count.get("balls", balls)
+                s = count.get("strikes", strikes)
+
+                pitches.append({
+                    "num": pitch_num,
+                    "pitch_name": pitch_name,
+                    "call": call_desc,
+                    "speed_mph": pitch_type,
+                    "balls": b,
+                    "strikes": s,
+                    "start_time": convert_to_et(event.get("startTime")),
+                })
+
                 last_pitch_dt = convert_to_et(event.get("startTime"))
 
         raw_inning = play.get("about", {}).get("inning")
@@ -197,14 +255,13 @@ if st.session_state.selected_game_pk:
             "desc": play.get("result", {}).get("description"),
             "away_score": play.get("result", {}).get("awayScore"),
             "home_score": play.get("result", {}).get("homeScore"),
-
             "inning_raw": raw_inning,
             "inning_group": "Extra Innings" if raw_inning >= 10 else raw_inning,
-
             "half_inning": play.get("about", {}).get("halfInning"),
             "start_dt": start_dt,
             "end_dt": end_dt,
             "last_pitch_dt": last_pitch_dt,
+            "pitches": pitches,
         })
 
     # =========================
@@ -277,8 +334,23 @@ if st.session_state.selected_game_pk:
         st.success(f"🕒 Last Pitch: {format_full_et(ab['last_pitch_dt'])}")
         st.write(f"🕒 At Bat End: {format_full_et(ab['end_dt'])}")
 
-        st.divider()
+        # =========================
+        # PITCH-BY-PITCH
+        # =========================
+        if ab["pitches"]:
+            with st.expander(f"🎯 Pitch-by-Pitch ({len(ab['pitches'])} pitches)"):
+                for p in ab["pitches"]:
+                    p_emoji = get_pitch_emoji(p["call"])
+                    speed_str = f" · {p['speed_mph']:.1f} mph" if p["speed_mph"] else ""
+                    count_str = f"Count: {p['balls']}-{p['strikes']}"
+                    time_str = format_full_et(p["start_time"]) if p["start_time"] else ""
+                    st.markdown(
+                        f"{p_emoji} **Pitch {p['num']}** — {p['pitch_name']}{speed_str}  \n"
+                        f"&nbsp;&nbsp;&nbsp;&nbsp;📣 *{p['call']}* | {count_str}"
+                        + (f" | 🕒 {time_str}" if time_str else "")
+                    )
 
+        st.divider()
         prev_score = score
 
 # =========================
@@ -286,7 +358,13 @@ if st.session_state.selected_game_pk:
 # =========================
 else:
 
-    date = st.date_input("Select date", datetime.today())
+    # Monday-first date input via locale workaround
+    import locale
+    date = st.date_input(
+        "Select date",
+        datetime.today(),
+        format="YYYY-MM-DD",
+    )
     date_str = date.strftime("%Y-%m-%d")
 
     st.markdown(f"## 📅 MLB Schedule — {date_str}")
@@ -301,11 +379,15 @@ else:
 
             away = g["teams"]["away"]["team"]
             home = g["teams"]["home"]["team"]
+            away_abbr = get_team_abbrev(away["id"], away["name"])
+            home_abbr = get_team_abbrev(home["id"], home["name"])
 
             games.append({
                 "gamePk": g["gamePk"],
                 "away_name": away["name"],
                 "home_name": home["name"],
+                "away_abbr": away_abbr,
+                "home_abbr": home_abbr,
                 "away_logo": f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{away['id']}.svg",
                 "home_logo": f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{home['id']}.svg",
                 "time": convert_to_et(g.get("gameDate")),
@@ -314,6 +396,48 @@ else:
                 "home_score": g["teams"]["home"].get("score", 0),
             })
 
+    # Schedule card CSS
+    st.markdown("""
+    <style>
+    .schedule-card {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+    }
+    .team-logo-col {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+    .team-logo-col img {
+        width: 24px;
+        height: 24px;
+    }
+    .game-info {
+        flex: 1;
+        min-width: 0;
+        font-size: 13px;
+        line-height: 1.4;
+    }
+    .matchup {
+        font-weight: 700;
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .game-meta {
+        color: #888;
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     cols = st.columns(2)
 
     for i, game in enumerate(games):
@@ -321,28 +445,31 @@ else:
         with cols[i % 2]:
 
             time_str = format_et(game["time"])
+            status = game["status"]
+            away_abbr = game["away_abbr"]
+            home_abbr = game["home_abbr"]
 
-            status_line = (
-                f"🏷️ {game['status']} | 📊 {game['away_score']} - {game['home_score']}"
-                if game["status"].lower() != "scheduled"
-                else f"🏷️ {game['status']}"
-            )
+            if status.lower() != "scheduled":
+                score_str = f"{game['away_score']}-{game['home_score']}"
+                meta_line = f"🕒 {time_str} · {status} · {score_str}"
+            else:
+                meta_line = f"🕒 {time_str} · {status}"
 
             with st.container(border=True):
-
-                c1, c2, c3 = st.columns([1, 5, 1])
+                c1, c2, c3 = st.columns([1, 4, 1])
 
                 with c1:
-                    st.image(game["away_logo"], width=26)
-                    st.image(game["home_logo"], width=26)
+                    st.image(game["away_logo"], width=24)
+                    st.image(game["home_logo"], width=24)
 
                 with c2:
                     st.markdown(
-                        f"**{game['away_name']} @ {game['home_name']}**  \n"
-                        f"🕒 {time_str} | {status_line}"
+                        f"<div class='matchup'>{away_abbr} @ {home_abbr}</div>"
+                        f"<div class='game-meta'>{meta_line}</div>",
+                        unsafe_allow_html=True,
                     )
 
                 with c3:
-                    if st.button("▶ GO", key=f"go_{game['gamePk']}", use_container_width=True):
+                    if st.button("▶", key=f"go_{game['gamePk']}", use_container_width=True, help=f"{game['away_name']} @ {game['home_name']}"):
                         st.session_state.selected_game_pk = game["gamePk"]
                         st.rerun()
