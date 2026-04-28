@@ -364,11 +364,11 @@ if st.session_state.selected_game_pk:
         # Timestamps
         col_t1, col_t2, col_t3 = st.columns(3)
         with col_t1:
-            st.markdown(f"🕐 **AB Start**  \n`{format_full_et(ab['start_dt']) or 'N/A'}`")
+            st.markdown(f"🕐 *At Bat Start*  \n`{format_full_et(ab['start_dt']) or 'N/A'}`")
         with col_t2:
             st.markdown(f"⚡ **Last Pitch**  \n`{format_full_et(ab['last_pitch_dt']) or 'N/A'}`")
         with col_t3:
-            st.markdown(f"🕔 **AB End**  \n`{format_full_et(ab['end_dt']) or 'N/A'}`")
+            st.markdown(f"🕔 *At Bat End*  \n`{format_full_et(ab['end_dt']) or 'N/A'}`")
 
         # Pitch-by-pitch
         if ab["pitches"]:
