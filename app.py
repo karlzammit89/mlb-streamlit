@@ -64,6 +64,44 @@ def get_result_emoji(result_event: str, desc: str = ""):
     return "⚾"
 
 # =========================
+# TEAM ABBREVIATIONS
+# =========================
+def get_team_abbrev(team_id, name):
+    mapping = {
+        "Arizona Diamondbacks": "ARI",
+        "Atlanta Braves": "ATL",
+        "Baltimore Orioles": "BAL",
+        "Boston Red Sox": "BOS",
+        "Chicago Cubs": "CHC",
+        "Chicago White Sox": "CWS",
+        "Cincinnati Reds": "CIN",
+        "Cleveland Guardians": "CLE",
+        "Colorado Rockies": "COL",
+        "Detroit Tigers": "DET",
+        "Houston Astros": "HOU",
+        "Kansas City Royals": "KC",
+        "Los Angeles Angels": "LAA",
+        "Los Angeles Dodgers": "LAD",
+        "Miami Marlins": "MIA",
+        "Milwaukee Brewers": "MIL",
+        "Minnesota Twins": "MIN",
+        "New York Mets": "NYM",
+        "New York Yankees": "NYY",
+        "Oakland Athletics": "OAK",
+        "Philadelphia Phillies": "PHI",
+        "Pittsburgh Pirates": "PIT",
+        "San Diego Padres": "SD",
+        "San Francisco Giants": "SF",
+        "Seattle Mariners": "SEA",
+        "St. Louis Cardinals": "STL",
+        "Tampa Bay Rays": "TB",
+        "Texas Rangers": "TEX",
+        "Toronto Blue Jays": "TOR",
+        "Washington Nationals": "WSH"
+    }
+    return mapping.get(name, name[:3].upper())
+
+# =========================
 # GAME VIEW
 # =========================
 if st.session_state.selected_game_pk:
@@ -91,8 +129,11 @@ if st.session_state.selected_game_pk:
     away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
 
     # =========================
-    # HEADER (FIT FIXED)
+    # HEADER (ABBREVIATED FIXED)
     # =========================
+    away_abbr = get_team_abbrev(away_id, away_team)
+    home_abbr = get_team_abbrev(home_id, home_team)
+
     c1, c2, c3 = st.columns([1, 6, 1])
 
     with c1:
@@ -103,28 +144,19 @@ if st.session_state.selected_game_pk:
             f"""
             <div style="
                 display: flex;
-                flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                text-align: center;
                 font-weight: 700;
-                width: 100%;
-                gap: 2px;
+                font-size: clamp(16px, 2.6vw, 28px);
+                gap: 10px;
+                flex-wrap: wrap;
+                text-align: center;
             ">
-                <div style="
-                    font-size: clamp(14px, 2.4vw, 26px);
-                    line-height: 1.2;
-                    display: flex;
-                    flex-wrap: wrap;
-                    justify-content: center;
-                    gap: 8px;
-                ">
-                    <span>{away_team}</span>
-                    <span style="color: #888;">{away_score}</span>
-                    <span>-</span>
-                    <span style="color: #888;">{home_score}</span>
-                    <span>{home_team}</span>
-                </div>
+                <span>{away_abbr}</span>
+                <span style="color:#888;">{away_score}</span>
+                <span>-</span>
+                <span style="color:#888;">{home_score}</span>
+                <span>{home_abbr}</span>
             </div>
             """,
             unsafe_allow_html=True
@@ -133,7 +165,6 @@ if st.session_state.selected_game_pk:
     with c3:
         st.image(home_logo, width=60)
 
-    
     # =========================
     # FILTERS
     # =========================
