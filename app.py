@@ -166,7 +166,7 @@ if st.session_state.selected_game_pk:
     # =========================
     # RUN FILTER BUTTON
     # =========================
-    run_filters = st.button("🚀 Run Filters")
+    run_filters = st.button("🚀 Apply Filters")
 
     filtered_at_bats = at_bats
 
