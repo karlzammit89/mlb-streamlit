@@ -15,7 +15,7 @@ if "selected_game_pk" not in st.session_state:
     st.session_state.selected_game_pk = None
 
 # =========================
-# TIME HELPERS (ET FIXED)
+# TIME HELPERS (ET - 24 HOUR)
 # =========================
 ET = ZoneInfo("America/New_York")
 
@@ -31,12 +31,12 @@ def convert_to_et(raw_time):
 def format_et(dt):
     if not dt:
         return "TBD"
-    return dt.strftime("%I:%M %p") + " ET"
+    return dt.strftime("%H:%M") + " ET"
 
 def format_full_et(dt):
     if not dt:
         return None
-    return dt.strftime("%Y-%m-%d %I:%M:%S %p") + " ET"
+    return dt.strftime("%Y-%m-%d %H:%M:%S") + " ET"
 
 # =========================
 # EMOJIS
