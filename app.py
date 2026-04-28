@@ -97,22 +97,30 @@ if mode == "Schedule":
         ]
 
         if games:
+
+            st.markdown("### 📅 Games")
+
             for game in games:
+
                 time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
 
-                col1, col2 = st.columns([1, 5])
+                with st.container():
 
-                with col1:
-                    if st.button(f"{game['gamePk']}", key=f"game_{game['gamePk']}"):
+                    # This acts like a clickable row
+                    clicked = st.button(
+                        f"⚾ {game['matchup']}  |  🕒 {time_only} (ET)  |  ID: {game['gamePk']}",
+                        key=f"row_{game['gamePk']}"
+                    )
+
+                    if clicked:
                         st.session_state.selected_game_pk = game["gamePk"]
                         st.session_state.mode = "Game Feed"
                         st.rerun()
 
-                with col2:
-                    st.write(f"⚾ {game['matchup']} | 🕒 {time_only} (ET)")
+                st.divider()
+
         else:
             st.warning("No games found")
-
 
 # =========================
 # MODE 2 — GAME FEED
