@@ -90,6 +90,9 @@ if st.session_state.selected_game_pk:
     home_score = linescore.get("teams", {}).get("home", {}).get("runs", 0)
     away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
 
+    # =========================
+    # HEADER (LOGOS + SCORE + FIXED TITLE)
+    # =========================
     c1, c2, c3 = st.columns([1, 4, 1])
 
     with c1:
@@ -97,13 +100,18 @@ if st.session_state.selected_game_pk:
 
     with c2:
         st.markdown(
-    f"""
-    <h2 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-        ⚾ {away_team} {away_score} - {home_score} {home_team}
-    </h2>
-    """,
-    unsafe_allow_html=True
-)
+            f"""
+            <div style="
+                white-space: nowrap;
+                font-size: clamp(12px, 2.2vw, 22px);
+                font-weight: 700;
+                text-align: center;
+            ">
+                ⚾ {away_team} {away_score} - {home_score} {home_team}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     with c3:
         st.image(home_logo, width=60)
