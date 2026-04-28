@@ -69,11 +69,12 @@ def get_result_emoji(result_event: str, desc: str = ""):
 # =========================
 if mode == "Schedule":
 
-    date = st.text_input("Enter date (YYYY-MM-DD)", "2026-04-22")
+    date = st.date_input("Select date", datetime.today())
+    date_str = date.strftime("%Y-%m-%d")
 
     if st.button("Load Games"):
 
-        url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date}"
+        url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_str}"
         data = requests.get(url).json()
 
         games = [
