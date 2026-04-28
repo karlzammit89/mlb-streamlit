@@ -70,7 +70,7 @@ def get_result_emoji(result_event: str, desc: str = ""):
 
 
 # =========================
-# GAME FEED VIEW (FULL SCREEN REPLACE)
+# GAME FEED VIEW
 # =========================
 if st.session_state.selected_game_pk:
 
@@ -157,9 +157,6 @@ if st.session_state.selected_game_pk:
             "pitches": pitches
         })
 
-    # =========================
-    # OUTPUT
-    # =========================
     prev_score = None
 
     for ab in at_bats:
@@ -191,46 +188,43 @@ if st.session_state.selected_game_pk:
 
 
 # =========================
-# SCHEDULE VIEW (AUTO LOAD ON DATE CHANGE)
+# SCHEDULE VIEW (AUTO LOAD)
 # =========================
+else:
 
-date = st.date_input("Select date", datetime.today())
-date_str = date.strftime("%Y-%m-%d")
+    date = st.date_input("Select date", datetime.today())
+    date_str = date.strftime("%Y-%m-%d")
 
-# =========================
-# TITLE WITH SELECTED DATE
-# =========================
-st.markdown(f"### 📅 Games for {date_str}")
+    st.markdown(f"### 📅 Games for {date_str}")
 
-url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_str}"
-data = requests.get(url).json()
+    url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_str}"
+    data = requests.get(url).json()
 
-games = [
-    {
-        "gamePk": g["gamePk"],
-        "matchup": f'{g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}',
-        "time": convert_to_et_str(g.get("gameDate"))
-    }
-    for d in data.get("dates", [])
-    for g in d.get("games", [])
-]
+    games = [
+        {
+            "gamePk": g["gamePk"],
+            "matchup": f'{g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}',
+            "time": convert_to_et(g.get("gameDate"))
+        }
+        for d in data.get("dates", [])
+        for g in d.get("games", [])
+    ]
 
-st.session_state.games = games
+    st.session_state.games = games
 
-if games:
+    if games:
 
-    for game in games:
+        for game in games:
 
-        time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
-
-        with st.container():
+            game_time = game["time"]
+            time_str = game_time.strftime("%H:%M ET") if game_time else "TBD"
 
             if st.button(
-                f"⚾ {game['matchup']} | 🕒 {time_only} (ET) | ID: {game['gamePk']}",
+                f"⚾ {game['matchup']} | 🕒 {time_str} | ID: {game['gamePk']}",
                 key=f"game_{game['gamePk']}"
             ):
                 st.session_state.selected_game_pk = game["gamePk"]
                 st.rerun()
 
-else:
-    st.warning("No games found for this date")
+    else:
+        st.warning("No games found for this date")
