@@ -339,34 +339,49 @@ if st.session_state.selected_game_pk:
 
     for ab in filtered:
         emoji = get_result_emoji(ab["result"], ab["desc"])
-        inning_label = f"{ab['inning_raw']} ({ab['half_inning']})"
+        half = (ab["half_inning"] or "").capitalize()
+        inning_label = f"{half} {ab['inning_raw']}"
 
-        st.subheader(f"{emoji} At Bat {ab['atBatIndex']}")
+        st.subheader(f"{emoji} At Bat #{ab['atBatIndex']}")
 
         score = f"{ab['away_score']} - {ab['home_score']}"
 
-        if score != prev_score and prev_score is not None:
-            st.write(f"Inning {inning_label} | Score {score} — SCORING PLAY")
+        is_scoring = score != prev_score and prev_score is not None
+
+        # Inning + score row
+        if is_scoring:
+            st.markdown(f"🏟️ **Inning:** {inning_label} &nbsp;|&nbsp; 📊 **Score:** {score} &nbsp; 🔥 *Scoring Play!*")
         else:
-            st.write(f"Inning {inning_label} | Score {score}")
+            st.markdown(f"🏟️ **Inning:** {inning_label} &nbsp;|&nbsp; 📊 **Score:** {score}")
 
-        st.write(f"Batter: {ab['batter']} vs Pitcher: {ab['pitcher']}")
-        st.write(f"Result: {ab['result']} — {ab['desc']}")
-        st.write(f"At Bat Start: {format_full_et(ab['start_dt'])}")
-        st.success(f"Last Pitch: {format_full_et(ab['last_pitch_dt'])}")
-        st.write(f"At Bat End: {format_full_et(ab['end_dt'])}")
+        # Matchup
+        st.markdown(f"🥎 **Batter:** {ab['batter']} &nbsp;|&nbsp; 🧢 **Pitcher:** {ab['pitcher']}")
 
+        # Result
+        st.markdown(f"📋 **Result:** {ab['result']}")
+        st.caption(f"📝 {ab['desc']}")
+
+        # Timestamps
+        col_t1, col_t2, col_t3 = st.columns(3)
+        with col_t1:
+            st.markdown(f"🕐 **AB Start**  \n`{format_full_et(ab['start_dt']) or 'N/A'}`")
+        with col_t2:
+            st.markdown(f"⚡ **Last Pitch**  \n`{format_full_et(ab['last_pitch_dt']) or 'N/A'}`")
+        with col_t3:
+            st.markdown(f"🕔 **AB End**  \n`{format_full_et(ab['end_dt']) or 'N/A'}`")
+
+        # Pitch-by-pitch
         if ab["pitches"]:
-            with st.expander(f"Pitch-by-Pitch ({len(ab['pitches'])} pitches)"):
+            with st.expander(f"🎯 Pitch-by-Pitch — {len(ab['pitches'])} pitches"):
                 for p in ab["pitches"]:
                     p_emoji = get_pitch_emoji(p["call"])
-                    speed_str = f" - {p['speed_mph']:.1f} mph" if p["speed_mph"] else ""
-                    count_str = f"Count: {p['balls']}-{p['strikes']}"
-                    time_str = format_full_et(p["start_time"]) if p["start_time"] else ""
+                    speed_str = f"  🏎️ {p['speed_mph']:.1f} mph" if p["speed_mph"] else ""
+                    count_str = f"⚖️ Count: **{p['balls']}-{p['strikes']}**"
+                    time_str = f"🕒 {format_full_et(p['start_time'])}" if p["start_time"] else ""
                     st.markdown(
-                        f"{p_emoji} **Pitch {p['num']}** — {p['pitch_name']}{speed_str}  \n"
-                        f"&nbsp;&nbsp;&nbsp;&nbsp;*{p['call']}* | {count_str}"
-                        + (f" | {time_str}" if time_str else "")
+                        f"{p_emoji} **Pitch {p['num']}** — 🎳 {p['pitch_name']}{speed_str}  \n"
+                        f"&nbsp;&nbsp;&nbsp;&nbsp;📣 *{p['call']}* &nbsp;|&nbsp; {count_str}"
+                        + (f" &nbsp;|&nbsp; {time_str}" if time_str else "")
                     )
 
         st.divider()
