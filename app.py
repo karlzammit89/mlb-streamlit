@@ -17,7 +17,6 @@ if "selected_game_pk" not in st.session_state:
 if "games" not in st.session_state:
     st.session_state.games = []
 
-
 # =========================
 # HELPERS
 # =========================
@@ -81,7 +80,7 @@ if st.session_state.selected_game_pk:
         st.rerun()
 
     # =========================
-    # LOAD GAME FEED FIRST (needed for team names)
+    # LOAD GAME FEED
     # =========================
     url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
     data = requests.get(url).json()
@@ -91,8 +90,15 @@ if st.session_state.selected_game_pk:
 
     st.markdown(f"## ⚾ {away_team} @ {home_team}")
 
+    # =========================
+    # BUILD FILTER UI
+    # =========================
     USE_INNING_FILTER = st.checkbox("Filter by Inning", value=False)
+    USE_TIME_FILTER = st.checkbox("Filter by Actual Time (ET)", value=False)
+
     TARGET_INNINGS = []
+    START_DT = None
+    END_DT = None
 
     if USE_INNING_FILTER:
         TARGET_INNINGS = st.multiselect(
@@ -101,13 +107,7 @@ if st.session_state.selected_game_pk:
             default=[1]
         )
 
-    USE_TIME_FILTER = st.checkbox("Filter by Actual Time (ET)", value=False)
-
-    START_DT = None
-    END_DT = None
-
     if USE_TIME_FILTER:
-
         col1, col2 = st.columns(2)
 
         with col1:
@@ -122,7 +122,7 @@ if st.session_state.selected_game_pk:
         END_DT = datetime.combine(end_date, end_time).replace(tzinfo=ZoneInfo("America/New_York"))
 
     # =========================
-    # BUILD PLAY DATA
+    # LOAD PLAYS
     # =========================
     at_bats = []
 
@@ -164,11 +164,55 @@ if st.session_state.selected_game_pk:
         })
 
     # =========================
+    # RUN FILTER BUTTON
+    # =========================
+    run_filters = st.button("🚀 Run Filters")
+
+    filtered_at_bats = at_bats
+
+    if run_filters:
+
+        def inning_match(ab):
+            if not USE_INNING_FILTER:
+                return True
+
+            if ab["inning"] is None:
+                return False
+
+            if ab["inning"] >= 10:
+                return "Extra Innings" in TARGET_INNINGS
+
+            return ab["inning"] in TARGET_INNINGS
+
+
+        def time_match(ab):
+            if not USE_TIME_FILTER:
+                return True
+
+            if not ab["startTime"]:
+                return False
+
+            try:
+                dt = datetime.fromisoformat(
+                    ab["startTime"].replace(" EDT", "").replace(" EST", "").replace("Z", "+00:00")
+                ).astimezone(ZoneInfo("America/New_York"))
+            except:
+                return False
+
+            return START_DT <= dt <= END_DT
+
+
+        filtered_at_bats = [
+            ab for ab in at_bats
+            if inning_match(ab) and time_match(ab)
+        ]
+
+    # =========================
     # OUTPUT
     # =========================
     prev_score = None
 
-    for ab in at_bats:
+    for ab in filtered_at_bats:
 
         emoji = get_result_emoji(ab["result"], ab["desc"])
         inning_label = f"{ab['inning']} ({ab['half_inning']})" if ab["inning"] else "N/A"
@@ -222,9 +266,7 @@ else:
     st.session_state.games = games
 
     if games:
-
         for game in games:
-
             game_time = game["time"]
             time_str = game_time.strftime("%H:%M ET") if game_time else "TBD"
 
