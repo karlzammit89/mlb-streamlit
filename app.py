@@ -91,7 +91,7 @@ if st.session_state.selected_game_pk:
     away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
 
     # =========================
-    # HEADER (RESTORED)
+    # HEADER (UPDATED)
     # =========================
     c1, c2, c3 = st.columns([1, 4, 1])
 
@@ -102,15 +102,22 @@ if st.session_state.selected_game_pk:
         st.markdown(
             f"""
             <div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
                 text-align: center;
                 font-weight: 700;
-                font-size: clamp(14px, 2.2vw, 24px);
-                line-height: 1.4;
+                width: 100%;
             ">
-                {away_team} {away_score} - {home_score} {home_team}
-                <br>
-                <span style="font-size: 14px; font-weight: 500;">
-                    {data.get("gameData", {}).get("status", {}).get("detailedState", "Unknown")}
+                <span style="
+                    font-size: clamp(12px, 2.2vw, 26px);
+                    line-height: 1.2;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    max-width: 100%;
+                ">
+                    {away_team} {away_score} - {home_score} {home_team}
                 </span>
             </div>
             """,
