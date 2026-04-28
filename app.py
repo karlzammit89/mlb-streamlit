@@ -98,7 +98,9 @@ if st.session_state.selected_game_pk:
     home_score = linescore.get("teams", {}).get("home", {}).get("runs", 0)
     away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
 
+    # =========================
     # HEADER
+    # =========================
     c1, c2, c3 = st.columns([1, 4, 1])
 
     with c1:
@@ -165,18 +167,17 @@ if st.session_state.selected_game_pk:
         })
 
     # =========================
-    # INNING OPTIONS (FIXED UI)
+    # INNING FILTER UI (FIXED ORDER)
     # =========================
     all_innings = sorted(
         {ab["inning"] for ab in at_bats if ab["inning"] is not None},
         key=lambda x: (x == "Extra Innings", x if isinstance(x, int) else 999)
     )
 
-    selected_innings = None
+    selected_innings = []
 
+    # 👇 NOW DIRECTLY UNDER CHECKBOX
     if USE_INNING_FILTER:
-
-        # moved directly under checkbox + EMPTY default
         selected_innings = st.multiselect(
             "Select innings",
             options=all_innings,
