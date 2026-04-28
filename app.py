@@ -91,7 +91,7 @@ if st.session_state.selected_game_pk:
     away_score = linescore.get("teams", {}).get("away", {}).get("runs", 0)
 
     # =========================
-    # HEADER (LOGOS + SCORE + FIXED TITLE)
+    # HEADER (FIXED ALIGNMENT)
     # =========================
     c1, c2, c3 = st.columns([1, 4, 1])
 
@@ -102,10 +102,13 @@ if st.session_state.selected_game_pk:
         st.markdown(
             f"""
             <div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
                 white-space: nowrap;
                 font-size: clamp(12px, 2.2vw, 22px);
                 font-weight: 700;
-                text-align: center;
             ">
                 ⚾ {away_team} {away_score} - {home_score} {home_team}
             </div>
