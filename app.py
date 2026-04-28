@@ -14,6 +14,9 @@ st.title("⚾ MLB Dashboard")
 if "selected_game_pk" not in st.session_state:
     st.session_state.selected_game_pk = None
 
+if "games" not in st.session_state:
+    st.session_state.games = []
+
 
 # =========================
 # HELPERS
@@ -67,13 +70,13 @@ def get_result_emoji(result_event: str, desc: str = ""):
 
 
 # =========================
-# GAME SELECTED → SHOW FEED ONLY
+# GAME FEED VIEW (FULL SCREEN REPLACE)
 # =========================
 if st.session_state.selected_game_pk:
 
     game_pk = st.session_state.selected_game_pk
 
-    if st.button("⬅ Back to Games"):
+    if st.button("⬅ Back to Schedule"):
         st.session_state.selected_game_pk = None
         st.rerun()
 
@@ -188,35 +191,33 @@ if st.session_state.selected_game_pk:
 
 
 # =========================
-# SHOW SCHEDULE ONLY IF NO GAME SELECTED
+# SCHEDULE VIEW (AUTO LOAD ON DATE CHANGE)
 # =========================
 else:
 
     date = st.date_input("Select date", datetime.today())
     date_str = date.strftime("%Y-%m-%d")
 
-    if st.button("Load Games"):
+    url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_str}"
+    data = requests.get(url).json()
 
-        url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_str}"
-        data = requests.get(url).json()
+    games = [
+        {
+            "gamePk": g["gamePk"],
+            "matchup": f'{g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}',
+            "time": convert_to_et_str(g.get("gameDate"))
+        }
+        for d in data.get("dates", [])
+        for g in d.get("games", [])
+    ]
 
-        games = [
-            {
-                "gamePk": g["gamePk"],
-                "matchup": f'{g["teams"]["away"]["team"]["name"]} @ {g["teams"]["home"]["team"]["name"]}',
-                "time": convert_to_et_str(g.get("gameDate"))
-            }
-            for d in data.get("dates", [])
-            for g in d.get("games", [])
-        ]
+    st.session_state.games = games
 
-        st.session_state.games = games
-
-    if "games" in st.session_state:
+    if games:
 
         st.markdown("### 📅 Games")
 
-        for game in st.session_state.games:
+        for game in games:
 
             time_only = game["time"].split(" ")[1][:5] if game["time"] else "N/A"
 
@@ -230,3 +231,6 @@ else:
                     st.rerun()
 
             st.divider()
+
+    else:
+        st.warning("No games found for this date")
