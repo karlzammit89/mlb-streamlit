@@ -194,21 +194,25 @@ def parse_schedule(date_str: str):
             status  = g.get("status", {}).get("detailedState", "Scheduled")
             game_dt = to_et(g.get("gameDate"))
             time_s  = fmt_et(game_dt)
-            away_sc = g["teams"]["away"].get("score", 0)
-            home_sc = g["teams"]["home"].get("score", 0)
+            away_sc      = g["teams"]["away"].get("score", 0)
+            home_sc      = g["teams"]["home"].get("score", 0)
+            innings      = g.get("linescore", {}).get("currentInning", 9) or 9
+            extra_inn    = innings > 9
 
             games.append({
-                "gamePk":     g["gamePk"],
-                "away_name":  away["name"],
-                "home_name":  home["name"],
-                "away_abbr":  away_ab,
-                "home_abbr":  home_ab,
-                "away_logo":  f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{away['id']}.svg",
-                "home_logo":  f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{home['id']}.svg",
-                "time_str":   time_s,
-                "status":     status,
-                "away_score": away_sc,
-                "home_score": home_sc,
+                "gamePk":        g["gamePk"],
+                "away_name":     away["name"],
+                "home_name":     home["name"],
+                "away_abbr":     away_ab,
+                "home_abbr":     home_ab,
+                "away_logo":     f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{away['id']}.svg",
+                "home_logo":     f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{home['id']}.svg",
+                "time_str":      time_s,
+                "status":        status,
+                "away_score":    away_sc,
+                "home_score":    home_sc,
+                "innings":       innings,
+                "extra_innings": extra_inn,
             })
     return games
 
@@ -436,6 +440,18 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     border-top: 1px solid rgba(255,255,255,0.08);
     padding-top: 5px;
 }
+.sched-extra {
+    display: inline-block;
+    background: #e67e22;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+    letter-spacing: 0.5px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -446,8 +462,11 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
         away_score_html = f'<span class="sched-score">{g["away_score"]}</span>' if is_live_or_final else ""
         home_score_html = f'<span class="sched-score">{g["home_score"]}</span>' if is_live_or_final else ""
 
+        # Meta line: time + status only — score already shown inline on each team row
+        # Extra innings badge shown when game went past 9
+        extra_badge = ' <span class="sched-extra">F/OT</span>' if g.get("extra_innings") and is_live_or_final else ""
         if is_live_or_final:
-            meta = f'{g["time_str"]} &middot; {g["status"]} &middot; {g["away_score"]}-{g["home_score"]}'
+            meta = f'{g["time_str"]} &middot; {g["status"]}{extra_badge}'
         else:
             meta = f'{g["time_str"]} &middot; {g["status"]}'
 
