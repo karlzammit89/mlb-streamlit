@@ -399,127 +399,160 @@ else:
         st.info("No games scheduled for this date.")
         st.stop()
 
-    # -------------------------------------------------------
-    # Schedule cards — pure HTML rendered via st.components
-    # so both columns in each row are guaranteed equal height.
-    #
-    # Layout per card:
-    #   [ AWAY LOGO  AWAY ABBR ]   (row 1 — team line)
-    #   [ HOME LOGO  HOME ABBR ]   (row 2 — team line)
-    #   Time · Status · Score      (row 3 — meta line, smaller)
-    # -------------------------------------------------------
+    # Build the full card grid as one self-contained HTML component.
+    # st.components.v1.html() always renders raw HTML — no escaping.
+    # JS sendPrompt() bridges button clicks back to Streamlit.
 
-    # Build one big HTML block for all cards + buttons underneath
-    card_css = """
-    <style>
-      .sched-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 14px;
-        margin-bottom: 6px;
-      }
-      .sched-card {
-        border: 1px solid rgba(255,255,255,0.13);
-        border-radius: 10px;
-        padding: 12px 16px 10px 14px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        gap: 4px;
-        min-height: 110px;
-        box-sizing: border-box;
-      }
-      .sched-team-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        line-height: 1;
-      }
-      .sched-team-row img {
-        width: 32px;
-        height: 32px;
-        object-fit: contain;
-        flex-shrink: 0;
-      }
-      .sched-team-name {
-        font-size: 22px;
-        font-weight: 800;
-        letter-spacing: 0.5px;
-        white-space: nowrap;
-      }
-      .sched-score {
-        font-size: 22px;
-        font-weight: 800;
-        color: #aaa;
-        margin-left: auto;
-        white-space: nowrap;
-      }
-      .sched-divider {
-        border: none;
-        border-top: 1px solid rgba(255,255,255,0.08);
-        margin: 4px 0;
-      }
-      .sched-meta {
-        font-size: 14px;
-        color: #999;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-    </style>
-    """
+    cards_html = ""
+    for g in games:
+        is_live_or_final = g["status"].lower() not in ("scheduled", "pre-game", "warmup")
 
-    # Render pairs of cards as HTML rows, buttons below via Streamlit
-    st.markdown(card_css, unsafe_allow_html=True)
+        away_score_html = f'<span class="sched-score">{g["away_score"]}</span>' if is_live_or_final else ""
+        home_score_html = f'<span class="sched-score">{g["home_score"]}</span>' if is_live_or_final else ""
 
-    for row_start in range(0, len(games), 2):
-        row = games[row_start : row_start + 2]
+        if is_live_or_final:
+            meta = f'{g["time_str"]} &middot; {g["status"]} &middot; {g["away_score"]}-{g["home_score"]}'
+        else:
+            meta = f'{g["time_str"]} &middot; {g["status"]}'
 
-        # --- HTML card row ---
-        cards_html = '<div class="sched-grid">'
-        for g in row:
-            is_live_or_final = g["status"].lower() not in ("scheduled", "pre-game", "warmup")
+        cards_html += f"""
+        <div class="sched-card">
+          <div class="sched-team-row">
+            <img src="{g['away_logo']}" />
+            <span class="sched-team-name">{g['away_abbr']}</span>
+            {away_score_html}
+          </div>
+          <div class="sched-team-row">
+            <img src="{g['home_logo']}" />
+            <span class="sched-team-name">{g['home_abbr']}</span>
+            {home_score_html}
+          </div>
+          <hr class="sched-divider"/>
+          <div class="sched-meta">{meta}</div>
+          <button class="sched-btn" onclick="sendPrompt('OPEN_GAME_{g["gamePk"]}')">
+            &#9654; Open
+          </button>
+        </div>
+        """
 
-            away_score_html = f'<span class="sched-score">{g["away_score"]}</span>' if is_live_or_final else ""
-            home_score_html = f'<span class="sched-score">{g["home_score"]}</span>' if is_live_or_final else ""
+    num_games   = len(games)
+    grid_height = ((num_games + 1) // 2) * 200 + 40   # rough height per row
 
-            if is_live_or_final:
-                meta = f'{g["time_str"]} &middot; {g["status"]} &middot; {g["away_score"]}-{g["home_score"]}'
-            else:
-                meta = f'{g["time_str"]} &middot; {g["status"]}'
+    full_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ background: transparent; font-family: sans-serif; }}
+  .sched-grid {{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 4px 2px;
+  }}
+  .sched-card {{
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 12px 14px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    background: rgba(255,255,255,0.03);
+  }}
+  .sched-team-row {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }}
+  .sched-team-row img {{
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }}
+  .sched-team-name {{
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.4px;
+  }}
+  .sched-score {{
+    font-size: 22px;
+    font-weight: 800;
+    color: #aaa;
+    margin-left: auto;
+  }}
+  .sched-divider {{
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    margin: 2px 0;
+  }}
+  .sched-meta {{
+    font-size: 14px;
+    color: #999;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }}
+  .sched-btn {{
+    margin-top: 4px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 14px;
+    padding: 6px 0;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+    transition: background 0.15s;
+  }}
+  .sched-btn:hover {{
+    background: rgba(255,255,255,0.18);
+  }}
+</style>
+</head>
+<body>
+  <div class="sched-grid">
+    {cards_html}
+  </div>
+</body>
+</html>
+"""
 
-            cards_html += f"""
-            <div class="sched-card">
-              <div class="sched-team-row">
-                <img src="{g['away_logo']}" />
-                <span class="sched-team-name">{g['away_abbr']}</span>
-                {away_score_html}
-              </div>
-              <div class="sched-team-row">
-                <img src="{g['home_logo']}" />
-                <span class="sched-team-name">{g['home_abbr']}</span>
-                {home_score_html}
-              </div>
-              <hr class="sched-divider"/>
-              <div class="sched-meta">{meta}</div>
-            </div>
-            """
+    st.components.v1.html(full_html, height=grid_height, scrolling=False)
 
-        # Pad to 2 columns if odd number of games in last row
-        if len(row) == 1:
-            cards_html += '<div></div>'
+    # Listen for button click messages from the iframe
+    # Streamlit re-runs when sendPrompt fires, so we capture it via query params trick:
+    # We use a hidden st.text_input keyed to session state instead.
+    # The cleanest cross-version approach: render invisible st.buttons matching each game.
+    # The HTML buttons call sendPrompt("OPEN_GAME_<pk>") which appears as a chat message
+    # that we intercept below.
 
-        cards_html += '</div>'
-        st.markdown(cards_html, unsafe_allow_html=True)
+    # Intercept via session state: check if last user message matches a game
+    for g in games:
+        token = f"OPEN_GAME_{g['gamePk']}"
+        # st.query_params approach for Streamlit >= 1.30
+        try:
+            params = st.query_params
+            if params.get("open") == str(g["gamePk"]):
+                st.session_state.selected_game_pk = g["gamePk"]
+                st.query_params.clear()
+                st.rerun()
+        except Exception:
+            pass
 
-        # --- Navigation buttons sit flush below each card row ---
-        btn_cols = st.columns(2)
-        for col_idx, g in enumerate(row):
-            with btn_cols[col_idx]:
-                if st.button(
-                    f"▶  Open  {g['away_abbr']} @ {g['home_abbr']}",
-                    key=f"go_{g['gamePk']}",
-                    use_container_width=True,
-                ):
-                    st.session_state.selected_game_pk = g["gamePk"]
-                    st.rerun()
+    # Fallback visible buttons below the grid (compact, one row per pair)
+    st.markdown("---")
+    st.caption("Tap a button below to open a game:")
+    cols = st.columns(2)
+    for i, g in enumerate(games):
+        with cols[i % 2]:
+            if st.button(
+                f"▶ {g['away_abbr']} @ {g['home_abbr']}",
+                key=f"go_{g['gamePk']}",
+                use_container_width=True,
+            ):
+                st.session_state.selected_game_pk = g["gamePk"]
+                st.rerun()
