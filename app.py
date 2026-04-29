@@ -44,8 +44,8 @@ TEAM_ABBREV = {
 }
 
 RESULT_EMOJI = {
-    "home run": "💥", "strikeout": "❌", "walk": "🚶",
-    "single": "🟢", "double play": "❌", "error": "🟡",
+    "home run": "💥", "strikeout": "❌", "groundout": "❌","walk": "🚶",
+    "single": "🟢", "double": "🟢", "triple": "🟢", "double play": "❌", "error": "🟡",
     "stolen base": "🏃", "out": "❌",
 }
 
@@ -340,7 +340,7 @@ if st.session_state.selected_game_pk:
 
         if USE_INNING_FILTER:
             labels = [str(i) for i in selected_innings] if selected_innings else ["none selected"]
-            st.info(f"🏟️ **Inning filter:** Innings {', '.join(labels)} — showing **{showing}** of **{total}** at-bats")
+            st.info(f"🏟️ **Inning filter:** Inning(s) {', '.join(labels)} — showing **{showing}** of **{total}** at-bats")
 
         if USE_TIME_FILTER:
             st.info(
