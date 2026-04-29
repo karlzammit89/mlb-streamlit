@@ -416,14 +416,14 @@ div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper
 }
 .game-matchup {
     font-weight: 700;
-    font-size: 20px;
+    font-size: 16px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     margin: 0;
 }
 .game-meta {
-    font-size: 16px;
+    font-size: 12px;
     color: #999;
     white-space: nowrap;
     overflow: hidden;
