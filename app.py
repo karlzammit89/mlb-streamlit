@@ -44,8 +44,8 @@ TEAM_ABBREV = {
 }
 
 RESULT_EMOJI = {
-    "home run": "💥", "strikeout": "❌", "walk": "🚶",
-    "single": "🟢", "double play": "❌", "error": "🟡",
+    "home run": "💥", "strikeout": "❌", "groundout": "❌", "walk": "🚶",
+    "single": "🟢", "double": "🟢", "triple": "🟢", "double play": "❌", "error": "🟡",
     "stolen base": "🏃", "out": "❌",
 }
 
