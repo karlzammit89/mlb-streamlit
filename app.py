@@ -55,7 +55,7 @@ PITCH_EMOJI = {
 }
 
 # =========================
-# STATE
+# SESSION STATE
 # =========================
 if "selected_game_pk" not in st.session_state:
     st.session_state.selected_game_pk = None
@@ -96,7 +96,6 @@ def pitch_emoji(call: str) -> str:
 
 # =========================
 # CACHED API CALLS
-# TTL=60s for live game data, 300s for schedule
 # =========================
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_game(game_pk: int) -> dict:
@@ -122,14 +121,14 @@ def parse_at_bats(game_pk: int):
     prev_total = 0
 
     for play in data.get("liveData", {}).get("plays", {}).get("allPlays", []):
-        about = play.get("about", {})
-        result = play.get("result", {})
+        about   = play.get("about", {})
+        result  = play.get("result", {})
         matchup = play.get("matchup", {})
 
-        start_dt = to_et(about.get("startTime"))
-        end_dt   = to_et(about.get("endTime"))
+        start_dt      = to_et(about.get("startTime"))
+        end_dt        = to_et(about.get("endTime"))
         last_pitch_dt = None
-        pitches = []
+        pitches       = []
 
         for ev in play.get("playEvents", []):
             if not ev.get("isPitch"):
@@ -138,44 +137,42 @@ def parse_at_bats(game_pk: int):
             count   = ev.get("count", {})
             p_time  = to_et(ev.get("startTime"))
             pitches.append({
-                "num":        len(pitches) + 1,
-                "pitch_name": details.get("type", {}).get("description", "Unknown"),
-                "call":       details.get("description", ""),
-                "speed_mph":  ev.get("pitchData", {}).get("startSpeed"),
-                "balls":      count.get("balls", 0),
-                "strikes":    count.get("strikes", 0),
-                "start_time": p_time,
-                # pre-format for display
+                "num":            len(pitches) + 1,
+                "pitch_name":     details.get("type", {}).get("description", "Unknown"),
+                "call":           details.get("description", ""),
+                "speed_mph":      ev.get("pitchData", {}).get("startSpeed"),
+                "balls":          count.get("balls", 0),
+                "strikes":        count.get("strikes", 0),
+                "start_time":     p_time,
                 "start_time_str": fmt_full_et(p_time),
             })
             last_pitch_dt = p_time
 
-        away_sc = result.get("awayScore", 0)
-        home_sc = result.get("homeScore", 0)
-        total   = (away_sc or 0) + (home_sc or 0)
-        raw_inn = about.get("inning") or 0
+        away_sc  = result.get("awayScore", 0)
+        home_sc  = result.get("homeScore", 0)
+        total    = (away_sc or 0) + (home_sc or 0)
+        raw_inn  = about.get("inning") or 0
 
         at_bats.append({
-            "atBatIndex":    play.get("atBatIndex"),
-            "batter":        matchup.get("batter", {}).get("fullName", ""),
-            "pitcher":       matchup.get("pitcher", {}).get("fullName", ""),
-            "result":        result.get("event", ""),
-            "desc":          result.get("description", ""),
-            "away_score":    away_sc,
-            "home_score":    home_sc,
-            "inning_raw":    raw_inn,
-            "inning_group":  "Extra Innings" if raw_inn >= 10 else raw_inn,
-            "half_inning":   about.get("halfInning", ""),
-            "start_dt":      start_dt,
-            "end_dt":        end_dt,
-            "last_pitch_dt": last_pitch_dt,
-            "pitches":       pitches,
+            "atBatIndex":      play.get("atBatIndex"),
+            "batter":          matchup.get("batter", {}).get("fullName", ""),
+            "pitcher":         matchup.get("pitcher", {}).get("fullName", ""),
+            "result":          result.get("event", ""),
+            "desc":            result.get("description", ""),
+            "away_score":      away_sc,
+            "home_score":      home_sc,
+            "inning_raw":      raw_inn,
+            "inning_group":    "Extra Innings" if raw_inn >= 10 else raw_inn,
+            "half_inning":     about.get("halfInning", ""),
+            "start_dt":        start_dt,
+            "end_dt":          end_dt,
+            "last_pitch_dt":   last_pitch_dt,
+            "pitches":         pitches,
             "is_scoring_play": total > prev_total,
-            # pre-formatted strings
-            "score_str":        f"{away_sc} - {home_sc}",
-            "start_dt_str":     fmt_full_et(start_dt),
-            "end_dt_str":       fmt_full_et(end_dt),
-            "last_pitch_str":   fmt_full_et(last_pitch_dt),
+            "score_str":       f"{away_sc} - {home_sc}",
+            "start_dt_str":    fmt_full_et(start_dt),
+            "end_dt_str":      fmt_full_et(end_dt),
+            "last_pitch_str":  fmt_full_et(last_pitch_dt),
         })
         prev_total = total
 
@@ -190,8 +187,8 @@ def parse_schedule(date_str: str):
     games = []
     for d in data.get("dates", []):
         for g in d.get("games", []):
-            away = g["teams"]["away"]["team"]
-            home = g["teams"]["home"]["team"]
+            away    = g["teams"]["away"]["team"]
+            home    = g["teams"]["home"]["team"]
             away_ab = abbrev(away["name"])
             home_ab = abbrev(home["name"])
             status  = g.get("status", {}).get("detailedState", "Scheduled")
@@ -200,20 +197,18 @@ def parse_schedule(date_str: str):
             away_sc = g["teams"]["away"].get("score", 0)
             home_sc = g["teams"]["home"].get("score", 0)
 
-            if status.lower() != "scheduled":
-                meta = f"{time_s} &middot; {status} &middot; {away_sc}-{home_sc}"
-            else:
-                meta = f"{time_s} &middot; {status}"
-
             games.append({
-                "gamePk":    g["gamePk"],
-                "away_name": away["name"],
-                "home_name": home["name"],
-                "away_abbr": away_ab,
-                "home_abbr": home_ab,
-                "away_logo": f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{away['id']}.svg",
-                "home_logo": f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{home['id']}.svg",
-                "meta":      meta,
+                "gamePk":     g["gamePk"],
+                "away_name":  away["name"],
+                "home_name":  home["name"],
+                "away_abbr":  away_ab,
+                "home_abbr":  home_ab,
+                "away_logo":  f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{away['id']}.svg",
+                "home_logo":  f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{home['id']}.svg",
+                "time_str":   time_s,
+                "status":     status,
+                "away_score": away_sc,
+                "home_score": home_sc,
             })
     return games
 
@@ -231,20 +226,20 @@ if st.session_state.selected_game_pk:
     with st.spinner("Loading game data…"):
         data, at_bats = parse_at_bats(game_pk)
 
-    # --- Header ---
-    gd       = data.get("gameData", {})
-    teams    = gd.get("teams", {})
-    home_t   = teams.get("home", {})
-    away_t   = teams.get("away", {})
-    home_id  = home_t.get("id")
-    away_id  = away_t.get("id")
-    home_ab  = abbrev(home_t.get("name", "Home"))
-    away_ab  = abbrev(away_t.get("name", "Away"))
+    gd      = data.get("gameData", {})
+    teams   = gd.get("teams", {})
+    home_t  = teams.get("home", {})
+    away_t  = teams.get("away", {})
+    home_id = home_t.get("id")
+    away_id = away_t.get("id")
+    home_ab = abbrev(home_t.get("name", "Home"))
+    away_ab = abbrev(away_t.get("name", "Away"))
 
     ls        = data.get("liveData", {}).get("linescore", {})
     home_runs = ls.get("teams", {}).get("home", {}).get("runs", 0)
     away_runs = ls.get("teams", {}).get("away", {}).get("runs", 0)
 
+    # --- Header ---
     c1, c2, c3 = st.columns([1, 6, 1])
     with c1:
         st.image(f"https://www.mlbstatic.com/team-logos/team-cap-on-light/{away_id}.svg", width=60)
@@ -263,7 +258,7 @@ if st.session_state.selected_game_pk:
 
     st.divider()
 
-    # --- Filter defaults from game data ---
+    # --- Filter defaults ---
     game_start_raw     = gd.get("datetime", {}).get("dateTime")
     game_start_default = to_et(game_start_raw)
     all_end_dts        = [ab["end_dt"] for ab in at_bats if ab["end_dt"]]
@@ -288,7 +283,6 @@ if st.session_state.selected_game_pk:
         selected_innings = st.multiselect("Select innings", options=all_innings, default=[])
 
     if USE_TIME_FILTER:
-        # Default dates and times
         def_start_date = game_start_default.date() if game_start_default else ddate.today()
         def_end_date   = game_end_default.date()   if game_end_default   else ddate.today()
         def_start_time = game_start_default.time() if game_start_default else dtime(12, 0)
@@ -313,7 +307,6 @@ if st.session_state.selected_game_pk:
 
     run_filters = st.button("🚀 Apply Filters")
 
-    # --- Filter logic ---
     def passes(ab):
         if USE_INNING_FILTER:
             if not selected_innings or ab["inning_group"] not in selected_innings:
@@ -354,9 +347,9 @@ if st.session_state.selected_game_pk:
 
     # --- Output ---
     for ab in filtered:
-        emoji       = result_emoji(ab["result"], ab["desc"])
-        half        = ab["half_inning"].capitalize()
-        inning_lbl  = f"{half} {ab['inning_raw']}"
+        emoji      = result_emoji(ab["result"], ab["desc"])
+        half       = ab["half_inning"].capitalize()
+        inning_lbl = f"{half} {ab['inning_raw']}"
 
         st.subheader(f"{emoji} At Bat #{ab['atBatIndex']}")
 
@@ -406,55 +399,127 @@ else:
         st.info("No games scheduled for this date.")
         st.stop()
 
-    st.markdown("""
-<style>
-div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper"] {
-    height: 80px !important;
-    min-height: 80px !important;
-    max-height: 80px !important;
-    overflow: hidden;
-}
-.game-matchup {
-    font-weight: 800;
-    font-size: 22px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin: 0 0 4px 0;
-    letter-spacing: 0.5px;
-}
-.game-meta {
-    font-size: 14px;
-    color: #bbb;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin: 0;
-    line-height: 1.5;
-}
-</style>
-""", unsafe_allow_html=True)
+    # -------------------------------------------------------
+    # Schedule cards — pure HTML rendered via st.components
+    # so both columns in each row are guaranteed equal height.
+    #
+    # Layout per card:
+    #   [ AWAY LOGO  AWAY ABBR ]   (row 1 — team line)
+    #   [ HOME LOGO  HOME ABBR ]   (row 2 — team line)
+    #   Time · Status · Score      (row 3 — meta line, smaller)
+    # -------------------------------------------------------
 
-    cols = st.columns(2)
-    for i, item in enumerate(games):
-        with cols[i % 2]:
-            with st.container(border=True):
-                c1, c2, c3 = st.columns([1, 5, 1])
-                with c1:
-                    st.image(item["away_logo"], width=38)
-                    st.image(item["home_logo"], width=38)
-                with c2:
-                    st.markdown(
-                        f"<p class='game-matchup'>{item['away_abbr']} @ {item['home_abbr']}</p>"
-                        f"<p class='game-meta'>{item['meta']}</p>",
-                        unsafe_allow_html=True,
-                    )
-                with c3:
-                    if st.button(
-                        "▶",
-                        key=f"go_{item['gamePk']}",
-                        use_container_width=True,
-                        help=f"{item['away_name']} @ {item['home_name']}",
-                    ):
-                        st.session_state.selected_game_pk = item["gamePk"]
-                        st.rerun()
+    # Build one big HTML block for all cards + buttons underneath
+    card_css = """
+    <style>
+      .sched-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 6px;
+      }
+      .sched-card {
+        border: 1px solid rgba(255,255,255,0.13);
+        border-radius: 10px;
+        padding: 12px 16px 10px 14px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+        min-height: 110px;
+        box-sizing: border-box;
+      }
+      .sched-team-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        line-height: 1;
+      }
+      .sched-team-row img {
+        width: 32px;
+        height: 32px;
+        object-fit: contain;
+        flex-shrink: 0;
+      }
+      .sched-team-name {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+      }
+      .sched-score {
+        font-size: 22px;
+        font-weight: 800;
+        color: #aaa;
+        margin-left: auto;
+        white-space: nowrap;
+      }
+      .sched-divider {
+        border: none;
+        border-top: 1px solid rgba(255,255,255,0.08);
+        margin: 4px 0;
+      }
+      .sched-meta {
+        font-size: 14px;
+        color: #999;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    </style>
+    """
+
+    # Render pairs of cards as HTML rows, buttons below via Streamlit
+    st.markdown(card_css, unsafe_allow_html=True)
+
+    for row_start in range(0, len(games), 2):
+        row = games[row_start : row_start + 2]
+
+        # --- HTML card row ---
+        cards_html = '<div class="sched-grid">'
+        for g in row:
+            is_live_or_final = g["status"].lower() not in ("scheduled", "pre-game", "warmup")
+
+            away_score_html = f'<span class="sched-score">{g["away_score"]}</span>' if is_live_or_final else ""
+            home_score_html = f'<span class="sched-score">{g["home_score"]}</span>' if is_live_or_final else ""
+
+            if is_live_or_final:
+                meta = f'{g["time_str"]} &middot; {g["status"]} &middot; {g["away_score"]}-{g["home_score"]}'
+            else:
+                meta = f'{g["time_str"]} &middot; {g["status"]}'
+
+            cards_html += f"""
+            <div class="sched-card">
+              <div class="sched-team-row">
+                <img src="{g['away_logo']}" />
+                <span class="sched-team-name">{g['away_abbr']}</span>
+                {away_score_html}
+              </div>
+              <div class="sched-team-row">
+                <img src="{g['home_logo']}" />
+                <span class="sched-team-name">{g['home_abbr']}</span>
+                {home_score_html}
+              </div>
+              <hr class="sched-divider"/>
+              <div class="sched-meta">{meta}</div>
+            </div>
+            """
+
+        # Pad to 2 columns if odd number of games in last row
+        if len(row) == 1:
+            cards_html += '<div></div>'
+
+        cards_html += '</div>'
+        st.markdown(cards_html, unsafe_allow_html=True)
+
+        # --- Navigation buttons sit flush below each card row ---
+        btn_cols = st.columns(2)
+        for col_idx, g in enumerate(row):
+            with btn_cols[col_idx]:
+                if st.button(
+                    f"▶  Open  {g['away_abbr']} @ {g['home_abbr']}",
+                    key=f"go_{g['gamePk']}",
+                    use_container_width=True,
+                ):
+                    st.session_state.selected_game_pk = g["gamePk"]
+                    st.rerun()
