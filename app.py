@@ -44,8 +44,8 @@ TEAM_ABBREV = {
 }
 
 RESULT_EMOJI = {
-    "home run": "💥", "strikeout": "❌", "groundout": "❌","walk": "🚶",
-    "single": "🟢", "double": "🟢", "triple": "🟢", "double play": "❌", "error": "🟡",
+    "home run": "💥", "strikeout": "❌", "walk": "🚶",
+    "single": "🟢", "double play": "❌", "error": "🟡",
     "stolen base": "🏃", "out": "❌",
 }
 
@@ -340,7 +340,7 @@ if st.session_state.selected_game_pk:
 
         if USE_INNING_FILTER:
             labels = [str(i) for i in selected_innings] if selected_innings else ["none selected"]
-            st.info(f"🏟️ **Inning filter:** Inning(s) {', '.join(labels)} — showing **{showing}** of **{total}** at-bats")
+            st.info(f"🏟️ **Inning filter:** Innings {', '.join(labels)} — showing **{showing}** of **{total}** at-bats")
 
         if USE_TIME_FILTER:
             st.info(
@@ -409,26 +409,28 @@ else:
     st.markdown("""
 <style>
 div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper"] {
-    height: 80px !important;
-    min-height: 80px !important;
-    max-height: 80px !important;
+    height: 110px !important;
+    min-height: 110px !important;
+    max-height: 110px !important;
     overflow: hidden;
 }
 .game-matchup {
-    font-weight: 700;
-    font-size: 16px;
+    font-weight: 800;
+    font-size: 22px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0 0 4px 0;
+    letter-spacing: 0.5px;
+}
+.game-meta {
+    font-size: 14px;
+    color: #bbb;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     margin: 0;
-}
-.game-meta {
-    font-size: 12px;
-    color: #999;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-top: 2px;
+    line-height: 1.5;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -439,8 +441,8 @@ div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper
             with st.container(border=True):
                 c1, c2, c3 = st.columns([1, 5, 1])
                 with c1:
-                    st.image(item["away_logo"], width=26)
-                    st.image(item["home_logo"], width=26)
+                    st.image(item["away_logo"], width=38)
+                    st.image(item["home_logo"], width=38)
                 with c2:
                     st.markdown(
                         f"<p class='game-matchup'>{item['away_abbr']} @ {item['home_abbr']}</p>"
