@@ -409,9 +409,9 @@ else:
     st.markdown("""
 <style>
 div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper"] {
-    height: 110px !important;
-    min-height: 110px !important;
-    max-height: 110px !important;
+    height: 80px !important;
+    min-height: 80px !important;
+    max-height: 80px !important;
     overflow: hidden;
 }
 .game-matchup {
