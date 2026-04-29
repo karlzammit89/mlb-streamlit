@@ -69,6 +69,10 @@ def get_result_emoji(result_event: str, desc: str = ""):
         return "🚶"
     if "single" in text:
         return "🟢"
+    if "double" in text:
+        return "🟢"
+    if "triple" in text:
+        return "🟢"
     if "double play" in text:
         return "❌"
     if "error" in text:
