@@ -63,6 +63,8 @@ def get_result_emoji(result_event: str, desc: str = ""):
         return "💥"
     if "strikeout" in text:
         return "❌"
+    if "groundout" in text:
+        return "❌"
     if "walk" in text:
         return "🚶"
     if "single" in text:
