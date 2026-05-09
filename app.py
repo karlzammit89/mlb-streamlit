@@ -44,8 +44,8 @@ TEAM_ABBREV = {
 }
 
 RESULT_EMOJI = {
-    "home run": "💥", "strikeout": "❌", "groundout": "❌", "walk": "🚶",
-    "single": "🟢", "double": "🟢", "triple": "🟢", "double play": "❌", "error": "🟡",
+    "home run": "💥", "strikeout": "❌", "walk": "🚶",
+    "single": "🟢", "double play": "❌", "error": "🟡",
     "stolen base": "🏃", "out": "❌",
 }
 
@@ -59,6 +59,8 @@ PITCH_EMOJI = {
 # =========================
 if "selected_game_pk" not in st.session_state:
     st.session_state.selected_game_pk = None
+if "schedule_date" not in st.session_state:
+    st.session_state.schedule_date = datetime.today().date()
 
 # =========================
 # HELPERS
@@ -292,12 +294,18 @@ if st.session_state.selected_game_pk:
         def_start_time = game_start_default.time() if game_start_default else dtime(12, 0)
         def_end_time   = game_end_default.time()   if game_end_default   else dtime(23, 59)
 
+        st.markdown("**Start date/time (ET)**")
         sc1, sc2 = st.columns(2)
         with sc1:
             start_date_input = st.date_input("Start date", value=def_start_date, key="tf_start_date")
-            start_time_input = st.time_input("Start time", value=def_start_time, step=60, key="tf_start_time")
         with sc2:
+            start_time_input = st.time_input("Start time", value=def_start_time, step=60, key="tf_start_time")
+
+        st.markdown("**End date/time (ET)**")
+        ec1, ec2 = st.columns(2)
+        with ec1:
             end_date_input = st.date_input("End date", value=def_end_date, key="tf_end_date")
+        with ec2:
             end_time_input = st.time_input("End time", value=def_end_time, step=60, key="tf_end_time")
 
         START_DT = datetime.combine(start_date_input, start_time_input).replace(tzinfo=ET)
@@ -335,7 +343,7 @@ if st.session_state.selected_game_pk:
 
         if USE_TIME_FILTER:
             st.info(
-                f"🕐 **Time filter:** {START_DT.strftime('%Y-%m-%d %H:%M')} ET → "
+                f"🕐 **Time filter:** {START_DT.strftime('%Y-%m-%d %H:%M')} → "
                 f"{END_DT.strftime('%Y-%m-%d %H:%M')} ET — showing **{showing}** of **{total}** at-bats"
             )
 
@@ -386,7 +394,8 @@ if st.session_state.selected_game_pk:
 # ======================================================
 else:
 
-    date     = st.date_input("Select date", datetime.today(), format="YYYY-MM-DD")
+    date     = st.date_input("Select date", st.session_state.schedule_date, format="YYYY-MM-DD")
+    st.session_state.schedule_date = date
     date_str = date.strftime("%Y-%m-%d")
     st.markdown(f"## MLB Schedule — {date_str}")
 
