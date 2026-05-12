@@ -232,6 +232,7 @@ if st.session_state.selected_game_pk:
     
     with nav_col1:
         if st.button("⬅ Back to Schedule", use_container_width=True):
+            st.session_state.selected_game_id = None
             st.session_state.last_refresh = None
             st.session_state.selected_game_pk = None
             st.rerun()
@@ -531,5 +532,8 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
                     key=f"go_{g['gamePk']}",
                     use_container_width=True,
                 ):
+
+                    st.session_state.last_refresh = datetime.now(ET)
+                
                     st.session_state.selected_game_pk = g["gamePk"]
                     st.rerun()
