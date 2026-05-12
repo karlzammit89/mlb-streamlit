@@ -61,6 +61,8 @@ if "selected_game_pk" not in st.session_state:
     st.session_state.selected_game_pk = None
 if "schedule_date" not in st.session_state:
     st.session_state.schedule_date = datetime.today().date()
+if "last_refresh" not in st.session_state:
+    st.session_state.last_refresh = None
 
 # =========================
 # HELPERS
@@ -225,9 +227,27 @@ if st.session_state.selected_game_pk:
 
     game_pk = st.session_state.selected_game_pk
 
-    if st.button("⬅ Back to Schedule"):
-        st.session_state.selected_game_pk = None
-        st.rerun()
+    nav_col1, nav_col2, _ = st.columns([1.3, 1, 8])
+    with nav_col1:
+        if st.button("⬅ Back to Schedule"):
+            st.session_state.last_refresh = None
+            st.session_state.selected_game_pk = None
+            st.rerun()
+    with nav_col2:
+        if st.button("🔄 Refresh"):
+            parse_at_bats.clear()
+            st.session_state.last_refresh = datetime.now(ET)
+            st.rerun()
+
+    if st.session_state.last_refresh:
+        st.markdown(
+            f"""<div style="background-color:#2e7d32;color:white;padding:4px 12px;
+                border-radius:4px;font-size:14px;font-weight:bold;width:fit-content;
+                margin-top:-10px;margin-bottom:15px;">
+                Last refresh {st.session_state.last_refresh.strftime('%H:%M:%S ET')}
+            </div>""",
+            unsafe_allow_html=True,
+        )
 
     with st.spinner("Loading game data…"):
         data, at_bats = parse_at_bats(game_pk)
