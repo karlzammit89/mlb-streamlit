@@ -229,12 +229,12 @@ if st.session_state.selected_game_pk:
 
     nav_col1, nav_col2, _ = st.columns([1.3, 1, 8])
     with nav_col1:
-        if st.button("⬅ Back to Schedule"):
+        if st.button("⬅ Back to Schedule", use_container_width=True):
             st.session_state.last_refresh = None
             st.session_state.selected_game_pk = None
             st.rerun()
     with nav_col2:
-        if st.button("🔄 Refresh"):
+        if st.button("🔄 Refresh", use_container_width=True):
             parse_at_bats.clear()
             st.session_state.last_refresh = datetime.now(ET)
             st.rerun()
