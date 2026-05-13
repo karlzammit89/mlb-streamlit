@@ -497,12 +497,16 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 
     cols = st.columns(2)
     for i, g in enumerate(games):
+        # 1. Determine if the game has actually started/finished to show data
         is_live_or_final = g["status"].lower() not in ("scheduled", "pre-game", "warmup")
+        
+        # 2. Set dynamic button labels and states
+        btn_label = f"▶ Open {g['away_abbr']} @ {g['home_abbr']}" if is_live_or_final else "⏳ Not Started"
+        btn_help = "View play-by-play data" if is_live_or_final else "Play-by-play is available once the game begins."
 
         away_score_html = f'<span class="sched-score">{g["away_score"]}</span>' if is_live_or_final else ""
         home_score_html = f'<span class="sched-score">{g["home_score"]}</span>' if is_live_or_final else ""
 
-        # Meta line: time + status only — score already shown inline on each team row
         # Extra innings badge shown when game went past 9
         extra_badge = ' <span class="sched-extra">F/OT</span>' if g.get("extra_innings") and is_live_or_final else ""
         if is_live_or_final:
@@ -527,13 +531,14 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
         with cols[i % 2]:
             with st.container(border=True):
                 st.markdown(inner_html, unsafe_allow_html=True)
+                # 3. Apply the disabled state and dynamic label
                 if st.button(
-                    f"▶  Open  {g['away_abbr']} @ {g['home_abbr']}",
-                    key=f"go_{g['gamePk']}",
+                    btn_label, 
+                    key=f"go_{g['gamePk']}", 
                     use_container_width=True,
+                    disabled=not is_live_or_final,
+                    help=btn_help
                 ):
-
                     st.session_state.last_refresh = datetime.now(ET)
-                
                     st.session_state.selected_game_pk = g["gamePk"]
                     st.rerun()
