@@ -502,7 +502,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
         
         # 2. Set dynamic button labels and states
         btn_label = f"▶ Open {g['away_abbr']} @ {g['home_abbr']}" if is_live_or_final else "⏳ Not Started"
-        btn_help = "View play-by-play data" if is_live_or_final else "Play-by-play is available once the game begins."
+        btn_help = "View play-by-play data" if is_live_or_final else "Data will be available once the game starts."
 
         away_score_html = f'<span class="sched-score">{g["away_score"]}</span>' if is_live_or_final else ""
         home_score_html = f'<span class="sched-score">{g["home_score"]}</span>' if is_live_or_final else ""
