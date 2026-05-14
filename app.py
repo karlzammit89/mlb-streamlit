@@ -6,8 +6,8 @@ from zoneinfo import ZoneInfo
 # =========================
 # PAGE CONFIG & TITLE
 # =========================
-st.set_page_config(page_title="MLB Dashboard", page_icon="⚾", layout="wide")
-st.title("⚾ MLB Dashboard")
+st.set_page_config(page_title="MLB Play by Play", page_icon="⚾", layout="wide")
+st.title("⚾ MLB Play by Play")
 
 # Monday-first calendar via JS locale override
 st.components.v1.html("""
