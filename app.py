@@ -311,9 +311,9 @@ if st.session_state.selected_game_pk:
         game_start_default = min(all_start_dts) if all_start_dts else None
 
     # --- Filters ---
-    USE_INNING_FILTER  = st.checkbox("🏟️ Filter by Inning",          value=False)
-    USE_TIME_FILTER    = st.checkbox("🕐 Filter by Actual Time (ET)", value=False)
-    USE_SCORING_FILTER = st.checkbox("🔥 Scoring Plays Only",         value=False)
+    USE_INNING_FILTER  = st.checkbox("🏟️ Filter by Inning", value=False, key="cb_inning")
+    USE_TIME_FILTER    = st.checkbox("🕐 Filter by Actual Time (ET)", value=False, key="cb_time")
+    USE_SCORING_FILTER = st.checkbox("🔥 Scoring Plays Only", value=False, key="cb_scoring")
 
     START_DT = END_DT = None
     selected_innings  = []
@@ -323,7 +323,7 @@ if st.session_state.selected_game_pk:
             {ab["inning_group"] for ab in at_bats if ab["inning_group"] is not None},
             key=lambda x: (x == "Extra Innings", x if isinstance(x, int) else 999),
         )
-        selected_innings = st.multiselect("Select innings", options=all_innings, default=[])
+        selected_innings = st.multiselect("Select innings", options=all_innings, default=[], key="ms_inning")
 
     if USE_TIME_FILTER:
         def_start_date = game_start_default.date() if game_start_default else ddate.today()
@@ -348,25 +348,47 @@ if st.session_state.selected_game_pk:
         START_DT = datetime.combine(start_date_input, start_time_input).replace(tzinfo=ET)
         END_DT   = datetime.combine(end_date_input,   end_time_input).replace(tzinfo=ET)
 
-    run_filters = st.button("🚀 Apply Filters")
+    # ── Action Buttons ──────────────────────────────────────────────────
+    btn_col1, btn_col2, _ = st.columns([1.5, 1.5, 7])
 
-    def passes(ab):
-        if USE_INNING_FILTER:
-            if not selected_innings or ab["inning_group"] not in selected_innings:
-                return False
-        if USE_TIME_FILTER:
-            if not ab["start_dt"] or START_DT is None or END_DT is None:
-                return False
-            if not (START_DT <= ab["start_dt"] <= END_DT):
-                return False
-        if USE_SCORING_FILTER and not ab["is_scoring_play"]:
-            return False
-        return True
+    with btn_col1:
+        if st.button("🚀 Apply Filters", use_container_width=True):
+            def passes(ab):
+                if USE_INNING_FILTER:
+                    if not selected_innings or ab["inning_group"] not in selected_innings:
+                        return False
+                if USE_TIME_FILTER:
+                    if not ab["start_dt"] or START_DT is None or END_DT is None:
+                        return False
+                    if not (START_DT <= ab["start_dt"] <= END_DT):
+                        return False
+                if USE_SCORING_FILTER and not ab["is_scoring_play"]:
+                    return False
+                return True
+            
+            st.session_state.filtered_at_bats = [ab for ab in at_bats if passes(ab)]
+            st.session_state.filters_applied = True
+            st.rerun()
 
-    filtered = at_bats if not run_filters else [ab for ab in at_bats if passes(ab)]
+    with btn_col2:
+        def reset_filters():
+            st.session_state.filters_applied = False
+            st.session_state.filtered_at_bats = None
+            # Reset checkbox widget states
+            st.session_state.cb_inning = False
+            st.session_state.cb_time = False
+            st.session_state.cb_scoring = False
+            # Clear multiselect if it exists
+            if "ms_inning" in st.session_state:
+                st.session_state.ms_inning = []
+
+        st.button("🗑️ Remove Filters", use_container_width=True, on_click=reset_filters)
 
     # --- Info banners ---
-    if run_filters:
+    filters_active = st.session_state.get("filters_applied", False)
+    filtered = st.session_state.get("filtered_at_bats") if filters_active else at_bats
+    
+    if filters_active:
         total   = len(at_bats)
         showing = len(filtered)
 
