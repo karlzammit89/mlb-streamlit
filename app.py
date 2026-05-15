@@ -235,6 +235,10 @@ if st.session_state.selected_game_pk:
 
     game_pk = st.session_state.selected_game_pk
 
+    # Always show a timestamp — seed with now() on first open if not set
+    if st.session_state.last_refresh is None:
+        st.session_state.last_refresh = datetime.now(ET)
+
     nav_col1, nav_col2, _ = st.columns([1.3, 1, 8])
     with nav_col1:
         if st.button("⬅ Back to Schedule"):
@@ -557,13 +561,21 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 <div class="sched-meta">{meta}</div>
 """
 
+        btn_label = (f"▶  Open  {g['away_abbr']} @ {g['home_abbr']}"
+                     if is_live_or_final else "⏳ Not Started")
+        btn_help  = ("View play-by-play data"
+                     if is_live_or_final else "Data will be available once the game starts.")
+
         with cols[i % 2]:
             with st.container(border=True):
                 st.markdown(inner_html, unsafe_allow_html=True)
                 if st.button(
-                    f"▶  Open  {g['away_abbr']} @ {g['home_abbr']}",
+                    btn_label,
                     key=f"go_{g['gamePk']}",
                     use_container_width=True,
+                    disabled=not is_live_or_final,
+                    help=btn_help,
                 ):
+                    st.session_state.last_refresh = datetime.now(ET)
                     st.session_state.selected_game_pk = g["gamePk"]
                     st.rerun()
