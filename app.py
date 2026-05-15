@@ -563,7 +563,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 
         btn_label = (f"▶  Open  {g['away_abbr']} @ {g['home_abbr']}"
                      if is_live_or_final else "⏳ Not Started")
-        btn_help  = ("View play-by-play data"
+        btn_help  = ("View play-by-play"
                      if is_live_or_final else "Data will be available once the game starts.")
 
         with cols[i % 2]:
