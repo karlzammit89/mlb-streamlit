@@ -6,8 +6,8 @@ from zoneinfo import ZoneInfo
 # =========================
 # PAGE CONFIG & TITLE
 # =========================
-st.set_page_config(page_title="MLB Play by Play", page_icon="⚾", layout="wide")
-st.title("⚾ MLB Play by Play")
+st.set_page_config(page_title="MLB Dashboard", page_icon="⚾", layout="wide")
+st.title("⚾ MLB Dashboard")
 
 # Monday-first calendar via JS locale override
 st.components.v1.html("""
@@ -63,6 +63,14 @@ if "schedule_date" not in st.session_state:
     st.session_state.schedule_date = datetime.today().date()
 if "last_refresh" not in st.session_state:
     st.session_state.last_refresh = None
+if "filters_applied" not in st.session_state:
+    st.session_state.filters_applied = False
+if "filtered_at_bats" not in st.session_state:
+    st.session_state.filtered_at_bats = None
+# FIX 4: snapshot of filter state at Apply time — banners read this,
+# not live checkbox state, so they only update when Apply is clicked.
+if "applied_filter_state" not in st.session_state:
+    st.session_state.applied_filter_state = {}
 
 # =========================
 # HELPERS
@@ -227,44 +235,27 @@ if st.session_state.selected_game_pk:
 
     game_pk = st.session_state.selected_game_pk
 
-    # Tightened the 3rd column to 1.3 and left-aligned the margin to close the gap
-    nav_col1, nav_col2, nav_col3, _ = st.columns([1.3, 1, 1.3, 6.4])
-    
+    nav_col1, nav_col2, _ = st.columns([1.3, 1, 8])
     with nav_col1:
-        if st.button("⬅ Back to Schedule", use_container_width=True):
-            st.session_state.selected_game_id = None
+        if st.button("⬅ Back to Schedule"):
             st.session_state.last_refresh = None
             st.session_state.selected_game_pk = None
             st.rerun()
-            
     with nav_col2:
-        if st.button("🔄 Refresh", use_container_width=True):
+        if st.button("🔄 Refresh"):
             parse_at_bats.clear()
             st.session_state.last_refresh = datetime.now(ET)
             st.rerun()
 
-    # Badge now sits in nav_col3 with no auto-margin
-    with nav_col3:
-        if st.session_state.last_refresh:
-            st.markdown(
-                f"""
-                <div style="
-                    background-color: #2e7d32; 
-                    color: white; 
-                    padding: 8px 12px; 
-                    border-radius: 4px; 
-                    font-size: 14px; 
-                    font-weight: bold;
-                    width: fit-content;
-                    margin: 0;          /* Removes centering to stay close to Refresh */
-                    display: block;
-                    white-space: nowrap;
-                ">
-                    Last refresh {st.session_state.last_refresh.strftime('%H:%M:%S ET')}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+    if st.session_state.last_refresh:
+        st.markdown(
+            f"""<div style="background-color:#2e7d32;color:white;padding:4px 12px;
+                border-radius:4px;font-size:14px;font-weight:bold;width:fit-content;
+                margin-top:-10px;margin-bottom:15px;">
+                Last refresh {st.session_state.last_refresh.strftime('%H:%M:%S ET')}
+            </div>""",
+            unsafe_allow_html=True,
+        )
 
     with st.spinner("Loading game data…"):
         data, at_bats = parse_at_bats(game_pk)
@@ -311,9 +302,10 @@ if st.session_state.selected_game_pk:
         game_start_default = min(all_start_dts) if all_start_dts else None
 
     # --- Filters ---
-    USE_INNING_FILTER  = st.checkbox("🏟️ Filter by Inning", value=False, key="cb_inning")
+    # Checkboxes use keys so Streamlit owns their state — no revert on rerun
+    USE_INNING_FILTER  = st.checkbox("🏟️ Filter by Inning",          value=False, key="cb_inning")
     USE_TIME_FILTER    = st.checkbox("🕐 Filter by Actual Time (ET)", value=False, key="cb_time")
-    USE_SCORING_FILTER = st.checkbox("🔥 Scoring Plays Only", value=False, key="cb_scoring")
+    USE_SCORING_FILTER = st.checkbox("🔥 Scoring Plays Only",         value=False, key="cb_scoring")
 
     START_DT = END_DT = None
     selected_innings  = []
@@ -348,7 +340,7 @@ if st.session_state.selected_game_pk:
         START_DT = datetime.combine(start_date_input, start_time_input).replace(tzinfo=ET)
         END_DT   = datetime.combine(end_date_input,   end_time_input).replace(tzinfo=ET)
 
-    # ── Action Buttons ──────────────────────────────────────────────────
+    # --- Action Buttons ---
     btn_col1, btn_col2, _ = st.columns([1.5, 1.5, 7])
 
     with btn_col1:
@@ -365,30 +357,49 @@ if st.session_state.selected_game_pk:
                 if USE_SCORING_FILTER and not ab["is_scoring_play"]:
                     return False
                 return True
-            
+
             st.session_state.filtered_at_bats = [ab for ab in at_bats if passes(ab)]
             st.session_state.filters_applied = True
-            st.rerun()
+            # FIX 4: snapshot the filter state at Apply time so banners
+            # reflect what was applied, not the current checkbox state.
+            st.session_state.applied_filter_state = {
+                "inning":   USE_INNING_FILTER,
+                "innings":  list(selected_innings),
+                "time":     USE_TIME_FILTER,
+                "start_dt": START_DT,
+                "end_dt":   END_DT,
+                "scoring":  USE_SCORING_FILTER,
+            }
+            # No st.rerun() here — button click already triggers a natural rerun.
+            # Adding st.rerun() would cause two full reruns (double execution).
 
     with btn_col2:
         def reset_filters():
-            st.session_state.filters_applied = False
-            st.session_state.filtered_at_bats = None
-            # Reset checkbox widget states
-            st.session_state.cb_inning = False
-            st.session_state.cb_time = False
+            st.session_state.filters_applied      = False
+            st.session_state.filtered_at_bats     = None
+            st.session_state.applied_filter_state = {}
+            st.session_state.cb_inning  = False
+            st.session_state.cb_time    = False
             st.session_state.cb_scoring = False
-            # Clear multiselect if it exists
             if "ms_inning" in st.session_state:
                 st.session_state.ms_inning = []
 
-        st.button("🗑️ Remove Filters", use_container_width=True, on_click=reset_filters)
+        # FIX 3: disabled when no filters are currently applied
+        st.button(
+            "🗑️ Remove Filters",
+            use_container_width=True,
+            on_click=reset_filters,
+            disabled=not st.session_state.get("filters_applied", False),
+        )
 
-    # --- Info banners ---
-    filters_active = st.session_state.get("filters_applied", False)
-    filtered = st.session_state.get("filtered_at_bats") if filters_active else at_bats
-    
-    if filters_active:
+    # FIX 1: persist filtered result in session_state so it survives reruns.
+    # Checkbox ticks no longer re-filter — only Apply does.
+    filters_applied = st.session_state.filters_applied
+    filtered        = st.session_state.filtered_at_bats if filters_applied else at_bats
+    afs             = st.session_state.applied_filter_state
+
+    # --- Info banners (FIX 4: read from snapshot, not live checkbox state) ---
+    if filters_applied:
         total   = len(at_bats)
         showing = len(filtered)
 
@@ -396,17 +407,17 @@ if st.session_state.selected_game_pk:
             st.warning("⚠️ No results found — please check the filters applied.")
             st.stop()
 
-        if USE_INNING_FILTER:
-            labels = [str(i) for i in selected_innings] if selected_innings else ["none selected"]
+        if afs.get("inning"):
+            labels = [str(i) for i in afs["innings"]] if afs["innings"] else ["none selected"]
             st.info(f"🏟️ **Inning filter:** Innings {', '.join(labels)} — showing **{showing}** of **{total}** at-bats")
 
-        if USE_TIME_FILTER:
+        if afs.get("time") and afs.get("start_dt") and afs.get("end_dt"):
             st.info(
-                f"🕐 **Time filter:** {START_DT.strftime('%Y-%m-%d %H:%M')} → "
-                f"{END_DT.strftime('%Y-%m-%d %H:%M')} ET — showing **{showing}** of **{total}** at-bats"
+                f"🕐 **Time filter:** {afs['start_dt'].strftime('%Y-%m-%d %H:%M')} → "
+                f"{afs['end_dt'].strftime('%Y-%m-%d %H:%M')} ET — showing **{showing}** of **{total}** at-bats"
             )
 
-        if USE_SCORING_FILTER:
+        if afs.get("scoring"):
             n_scoring = sum(1 for ab in at_bats if ab["is_scoring_play"])
             st.info(f"🔥 **Scoring plays filter:** {n_scoring} scoring play(s) in game — showing **{showing}** of **{total}** at-bats")
 
@@ -519,16 +530,12 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 
     cols = st.columns(2)
     for i, g in enumerate(games):
-        # 1. Determine if the game has actually started/finished to show data
         is_live_or_final = g["status"].lower() not in ("scheduled", "pre-game", "warmup")
-        
-        # 2. Set dynamic button labels and states
-        btn_label = f"▶ Open {g['away_abbr']} @ {g['home_abbr']}" if is_live_or_final else "⏳ Not Started"
-        btn_help = "View play-by-play data" if is_live_or_final else "Data will be available once the game starts."
 
         away_score_html = f'<span class="sched-score">{g["away_score"]}</span>' if is_live_or_final else ""
         home_score_html = f'<span class="sched-score">{g["home_score"]}</span>' if is_live_or_final else ""
 
+        # Meta line: time + status only — score already shown inline on each team row
         # Extra innings badge shown when game went past 9
         extra_badge = ' <span class="sched-extra">F/OT</span>' if g.get("extra_innings") and is_live_or_final else ""
         if is_live_or_final:
@@ -553,14 +560,10 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
         with cols[i % 2]:
             with st.container(border=True):
                 st.markdown(inner_html, unsafe_allow_html=True)
-                # 3. Apply the disabled state and dynamic label
                 if st.button(
-                    btn_label, 
-                    key=f"go_{g['gamePk']}", 
+                    f"▶  Open  {g['away_abbr']} @ {g['home_abbr']}",
+                    key=f"go_{g['gamePk']}",
                     use_container_width=True,
-                    disabled=not is_live_or_final,
-                    help=btn_help
                 ):
-                    st.session_state.last_refresh = datetime.now(ET)
                     st.session_state.selected_game_pk = g["gamePk"]
                     st.rerun()
