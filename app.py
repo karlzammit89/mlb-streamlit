@@ -239,27 +239,27 @@ if st.session_state.selected_game_pk:
     if st.session_state.last_refresh is None:
         st.session_state.last_refresh = datetime.now(ET)
 
-    nav_col1, nav_col2, _ = st.columns([1.3, 1, 8])
+    nav_col1, nav_col2, nav_col3, _ = st.columns([1.3, 1, 1.3, 6.4])
     with nav_col1:
-        if st.button("⬅ Back to Schedule"):
+        if st.button("⬅ Back to Schedule", use_container_width=True):
             st.session_state.last_refresh = None
             st.session_state.selected_game_pk = None
             st.rerun()
     with nav_col2:
-        if st.button("🔄 Refresh"):
+        if st.button("🔄 Refresh", use_container_width=True):
             parse_at_bats.clear()
             st.session_state.last_refresh = datetime.now(ET)
             st.rerun()
-
-    if st.session_state.last_refresh:
-        st.markdown(
-            f"""<div style="background-color:#2e7d32;color:white;padding:4px 12px;
-                border-radius:4px;font-size:14px;font-weight:bold;width:fit-content;
-                margin-top:-10px;margin-bottom:15px;">
-                Last refresh {st.session_state.last_refresh.strftime('%H:%M:%S ET')}
-            </div>""",
-            unsafe_allow_html=True,
-        )
+    with nav_col3:
+        if st.session_state.last_refresh:
+            st.markdown(
+                f"""<div style="background-color:#2e7d32;color:white;padding:8px 16px;
+                    border-radius:4px;font-size:14px;font-weight:bold;width:fit-content;
+                    white-space:nowrap;">
+                    Last refresh {st.session_state.last_refresh.strftime('%H:%M:%S ET')}
+                </div>""",
+                unsafe_allow_html=True,
+            )
 
     with st.spinner("Loading game data…"):
         data, at_bats = parse_at_bats(game_pk)
@@ -563,7 +563,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 
         btn_label = (f"▶  Open  {g['away_abbr']} @ {g['home_abbr']}"
                      if is_live_or_final else "⏳ Not Started")
-        btn_help  = ("View play-by-play"
+        btn_help  = ("View play-by-play data"
                      if is_live_or_final else "Data will be available once the game starts.")
 
         with cols[i % 2]:
